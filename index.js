@@ -274,27 +274,40 @@ const PORT = process.env.PORT || 3000;
 
 /**
  * 🔹 **GET /ads - Lists all ads that are not blacklisted, sorted based on query parameters.
- * Query Parameters:
+ * 
+ * Query Parameters (optional):
  *   - superPrice: if "true", sorts ads with superPrice (true) first.
- *   - recent: if "true", sorts ads by creation date descending (most recent first).
- *   - priceDesc: if "true", sorts ads by price descending (higher to lower).
- * If no query parameter is provided, defaults to sorting by creation date descending.
+ *   - price: "asc" to sort by price ascending, or "desc" for descending.
+ *   - published: "first" to sort by createdAt descending (most recent first) or "last" for ascending (oldest first).
+ * 
+ * Default ordering is by published first (createdAt descending).
  */
 app.get('/ads', async (req, res) => {
   try {
     let sortCriteria = {};
+
     if (req.query.superPrice === 'true') {
       sortCriteria.superPrice = -1;
     }
-    if (req.query.recent === 'true') {
+
+    if (req.query.price) {
+      if (req.query.price === 'asc') {
+        sortCriteria.price = 1;
+      } else if (req.query.price === 'desc') {
+        sortCriteria.price = -1;
+      }
+    }
+
+    if (req.query.published) {
+      if (req.query.published === 'first') {
+        sortCriteria.createdAt = -1;
+      } else if (req.query.published === 'last') {
+        sortCriteria.createdAt = 1;
+      }
+    } else {
       sortCriteria.createdAt = -1;
     }
-    if (req.query.priceDesc === 'true') {
-      sortCriteria.price = -1;
-    }
-    if (Object.keys(sortCriteria).length === 0) {
-      sortCriteria = { createdAt: -1 };
-    }
+
     const ads = await Ad.find({ blacklisted: { $ne: true } }).sort(sortCriteria);
     res.json(ads);
   } catch (err) {
