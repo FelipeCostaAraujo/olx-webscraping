@@ -1,5 +1,27 @@
 @baseUrl = http://localhost:6000
+@adId = 67ab7b6042bc114f07b487ae
+
 ###
-# @name findAll
+# GET ALL ADS
 GET {{baseUrl}}/ads
+Content-Type: application/json
+
+###
+# DELETE AN AD (SUBSTITUA {{adId}} PELO ID REAL)
+DELETE {{baseUrl}}/ads/{{adId}}
+Content-Type: application/json
+
+###
+# GET PRICE TREND FOR A SPECIFIC AD (SUBSTITUA {{adId}} PELO ID REAL)
+GET {{baseUrl}}/price-trend/ads/{{adId}}/price-trend
+Content-Type: application/json
+
+###
+# GET PRICE TRENDS FOR ALL ADS
+GET {{baseUrl}}/price-trend/ads/price-trends
+Content-Type: application/json
+
+###
+# GET PREDICTION FOR A SPECIFIC AD (SUBSTITUA {{adId}} PELO ID REAL)
+GET {{baseUrl}}/predictions/ads/{{adId}}/prediction
 Content-Type: application/json

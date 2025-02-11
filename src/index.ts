@@ -8,7 +8,7 @@
 import 'dotenv/config';
 import cron from 'node-cron';
 import connectToDatabase from './database';
-import { checkAllSearches } from './scraper/scraper';
+import { checkAllSearches, checkCarSearches } from './scraper/scraper';
 import './server';
 
 // Conecta ao MongoDB
@@ -22,3 +22,12 @@ cron.schedule('0 */2 * * *', () => {
 
 // Executa as buscas imediatamente ao iniciar a aplicação.
 checkAllSearches();
+
+
+// Chamada imediata:
+checkCarSearches();
+
+cron.schedule('0 */2 * * *', () => {
+  console.log("[Cron] Iniciando buscas de carros agendadas...");
+  checkCarSearches();
+});
