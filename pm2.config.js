@@ -2,8 +2,11 @@ module.exports = {
   apps: [
     {
       name: 'olx-app',
-      script: './index.js',
-      watch: true,
+      script: './dist/index.js',
+      watch: false,
+      env: {
+        NODE_ENV: 'production'
+      }
     },
   ],
 };

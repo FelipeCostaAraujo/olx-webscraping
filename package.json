@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "build": "tsc",
+    "test": "NODE_ENV=test jest -i",
+    "start": "ts-node-dev --transpile-only --ignore-watch node_modules --respawn src/index.ts",
+    "dev": "nodemon src/index.ts",
     "start:pm2": "pm2 start ./pm2.config.js"
   },
   "keywords": [],
@@ -14,16 +15,27 @@
   "type": "commonjs",
   "description": "",
   "dependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
+    "cron": "^3.5.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "mongoose": "^8.10.0",
     "node-cron": "^3.0.3",
-    "puppeteer": "^24.2.0"
+    "puppeteer": "^24.2.0",
+    "sentiment": "^5.0.2"
   },
   "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.1",
+    "@types/node-cron": "^3.0.11",
+    "@types/puppeteer": "^5.4.7",
+    "@types/sentiment": "^5.0.4",
     "nodemon": "^3.1.9",
-    "pm2": "^5.4.3"
+    "pm2": "^5.4.3",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.7.3"
   }
 }
