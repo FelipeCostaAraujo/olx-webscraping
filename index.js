@@ -1,3 +1,10 @@
+/**
+ * 🔹 **Main API file for scraping and serving OLX ads.**
+ * 
+ * This file connects to MongoDB, defines the Ad model, scrapes ads using Axios (with Puppeteer fallback),
+ * and exposes endpoints to list and soft-delete (blacklist) ads.
+ */
+
 require('dotenv').config();
 const axios = require('axios');
 const cheerio = require('cheerio');
@@ -5,64 +12,68 @@ const cron = require('node-cron');
 const puppeteer = require('puppeteer');
 const express = require('express');
 const mongoose = require('mongoose');
+const config = require('./config');
 
-// ----------------------------------------------------
-// 1. Conexão com o MongoDB (usando seu servidor local ou Dell)
-const MONGODB_URI = process.env.MONGODB_URI; 
+/**
+ * 🔹 **Connects to MongoDB using the provided environment variable.**
+ */
+const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
   console.error("A variável de ambiente MONGODB_URI não está definida!");
   process.exit(1);
 }
 
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log("Conectado ao MongoDB."))
+  .then(() => {})
   .catch((err) => {
     console.error("Erro ao conectar no MongoDB:", err);
     process.exit(1);
   });
 
-// ----------------------------------------------------
-// 2. Definição do Schema e Model para anúncios
+/**
+ * 🔹 **Defines the Ad schema and model.**
+ * @property {String} title - Title of the ad.
+ * @property {Number} price - Price of the ad.
+ * @property {String} url - URL of the ad.
+ * @property {String} imageUrl - URL of the ad image.
+ * @property {String} searchQuery - The search query used to scrape the ad.
+ * @property {Boolean} superPrice - Indicates if the ad is considered "super preço".
+ * @property {String} location - The region and state where the ad was published.
+ * @property {String} publishedAt - The date and time when the ad was published.
+ * @property {Date} createdAt - Date and time when the ad was created.
+ * @property {Boolean} blacklisted - Indicates if the ad is blacklisted.
+ */
 const adSchema = new mongoose.Schema({
   title: String,
   price: Number,
   url: String,
-  searchQuery: String, // "rtx 2080 ti" ou "rtx 3080 ti"
-  createdAt: { type: Date, default: Date.now }
+  imageUrl: String,
+  searchQuery: String,
+  superPrice: { type: Boolean, default: false },
+  location: { type: String, default: "" },
+  publishedAt: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
+  blacklisted: { type: Boolean, default: false }
 });
 
 const Ad = mongoose.model('Ad', adSchema);
 
-// ----------------------------------------------------
-// 3. Configuração das buscas
-// Cada objeto representa uma busca com parâmetros específicos.
-const searches = [
-  {
-    query: "rtx 2080 ti",
-    maxPrice: 2500,
-    baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+2080+ti&sp=2&pdvme=2&pdvme=1&o=1",
-    regex: /RTX\s*2080\s*Ti/i
-  },
-  {
-    query: "rtx 3080 ti",
-    maxPrice: 3500,
-    baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+3080+ti&sp=2&pdvme=2&pdvme=1&o=1",
-    regex: /RTX\s*3080\s*Ti/i
-  }
-];
-
-// Função para construir a URL com a página desejada.
-// Se for a página 1, retorna a baseUrl (que já contém &o=1).
-// Caso contrário, substitui o "&o=1" final por "&o=page".
+/**
+ * 🔹 **Builds the URL for a given search and page number.**
+ * @param {Object} search - The search configuration object.
+ * @param {number} page - The page number.
+ * @returns {string} - The constructed URL.
+ */
 function buildUrl(search, page) {
   if (page === 1) return search.baseUrl;
   return search.baseUrl.replace(/&o=1$/, `&o=${page}`);
 }
 
-// ----------------------------------------------------
-// 4. Funções para Scraping
-
-// Função para auto-scroll com Puppeteer (para carregar conteúdo lazy-loaded)
+/**
+ * 🔹 **Performs auto-scroll on a Puppeteer page to load lazy-loaded content.**
+ * @param {Object} page - The Puppeteer page instance.
+ * @returns {Promise<void>}
+ */
 async function autoScroll(page) {
   await page.evaluate(async () => {
     await new Promise((resolve) => {
@@ -81,32 +92,41 @@ async function autoScroll(page) {
   });
 }
 
-// Usa o Puppeteer para obter o HTML (fallback)
+/**
+ * 🔹 **Fetches the HTML content of a page using Puppeteer as fallback.**
+ * @param {string} url - The URL of the page.
+ * @returns {Promise<string|null>} - The HTML content or null if failed.
+ */
 async function fetchPageWithPuppeteer(url) {
   let browser;
   try {
-    console.log("Usando Puppeteer para buscar a página:", url);
-    browser = await puppeteer.launch({ headless: true });
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
     const page = await browser.newPage();
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
       'AppleWebKit/537.36 (KHTML, like Gecko) ' +
       'Chrome/105.0.0.0 Safari/537.36'
     );
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('a.olx-ad-card__link-wrapper', { timeout: 60000 });
     await autoScroll(page);
     return await page.content();
   } catch (err) {
-    console.error("Erro no Puppeteer:", err.message);
     return null;
   } finally {
     if (browser) await browser.close();
   }
 }
 
-// Tenta obter o HTML com Axios; se ocorrer 403, usa Puppeteer
+/**
+ * 🔹 **Fetches the HTML content of a page using Axios, falling back to Puppeteer on 403 errors.**
+ * @param {string} url - The URL of the page.
+ * @returns {Promise<string|null>} - The HTML content or null if failed.
+ */
 async function fetchPage(url) {
-  console.log("Buscando URL:", url);
   try {
     const { data } = await axios.get(url, {
       headers: {
@@ -120,21 +140,24 @@ async function fetchPage(url) {
     return data;
   } catch (error) {
     if (error.response && error.response.status === 403) {
-      console.warn("Axios retornou 403. Usando Puppeteer...");
       return await fetchPageWithPuppeteer(url);
     } else {
-      console.error("Erro ao buscar a página:", error.message);
       return null;
     }
   }
 }
 
-// Faz o parse do HTML para extrair os anúncios encontrados para uma busca específica
+/**
+ * 🔹 **Parses the HTML to extract ads based on the search configuration.**
+ * Also extracts the location and publication date/time.
+ * @param {string} html - The HTML content of the page.
+ * @param {Object} search - The search configuration.
+ * @returns {Array<Object>} - An array of ad objects.
+ */
 function parseListings(html, search) {
   const $ = cheerio.load(html);
   let listings = [];
-
-  // Seleciona os anúncios usando o seletor de link (baseado na estrutura observada)
+  
   $('a.olx-ad-card__link-wrapper').each((i, el) => {
     const link = $(el).attr('href');
     const titleId = $(el).attr('aria-labelledby');
@@ -142,62 +165,81 @@ function parseListings(html, search) {
     if (titleId) {
       title = $(`#${titleId}`).text().trim();
     }
-    // Supondo que o preço esteja em um elemento com a classe "olx-ad-card__price" próximo ao link
     const parent = $(el).parent();
     const priceText = parent.find('.olx-ad-card__price').text().trim();
-
-    console.log(`DEBUG [${search.query}]: Anúncio ${i + 1} -> Título: "${title}" | Preço bruto: "${priceText}" | Link: "${link}"`);
-
-    // Filtra o anúncio pelo título usando o regex específico
+    const imgElement = parent.find('img').first();
+    const imageUrl = imgElement.attr('data-src') || imgElement.attr('src') || "";
+    
+    const detailsText = parent.find('.olx-ad-card__bottom').text().trim();
+    
+    let location = "";
+    let publishedAt = "";
+    if (detailsText) {
+      const parts = detailsText.replace('•', '').split('|');
+      if (parts.length > 0) {
+        location = parts[0].trim();
+      }
+      if (parts.length > 1) {
+        publishedAt = parts[1].trim();
+      }
+    }
+    
     if (!search.regex.test(title)) {
-      console.log(`DEBUG [${search.query}]: Anúncio ${i + 1} ignorado (título não corresponde).`);
       return;
     }
+    
     let price = parseFloat(priceText.replace(/[^\d,]/g, '').replace(',', '.'));
-    console.log(`DEBUG [${search.query}]: Anúncio ${i + 1} -> Preço convertido: ${price}`);
     if (price && price <= search.maxPrice) {
-      listings.push({ title, price, url: link, searchQuery: search.query });
-      console.log(`DEBUG [${search.query}]: Anúncio ${i + 1} ACEITO.`);
-    } else {
-      console.log(`DEBUG [${search.query}]: Anúncio ${i + 1} rejeitado (preço fora do limite).`);
+      const isSuperPrice = price <= search.superPriceThreshold;
+      listings.push({
+        title,
+        price,
+        url: link,
+        imageUrl,
+        searchQuery: search.query,
+        superPrice: isSuperPrice,
+        location,
+        publishedAt
+      });
     }
   });
-
-  if (listings.length === 0) {
-    console.log(`DEBUG [${search.query}]: Nenhum anúncio válido encontrado com os seletores e filtro atuais.`);
-  }
+  
   return listings;
 }
 
-// Salva (ou atualiza) o anúncio no MongoDB, evitando duplicação (verificando título e preço)
+
+/**
+ * 🔹 **Saves an ad to the database if it does not already exist.
+ * Ads that are blacklisted are not reinserted.
+ * @param {Object} ad - The ad object to save.
+ * @returns {Promise<void>}
+ */
 async function saveAd(ad) {
   try {
-    await Ad.findOneAndUpdate(
-      { title: ad.title, price: ad.price },
-      { $setOnInsert: ad },
-      { upsert: true, new: true }
-    );
-    console.log(`Salvo: ${ad.title} (${ad.searchQuery}) - R$${ad.price}`);
+    const existing = await Ad.findOne({ title: ad.title, price: ad.price });
+    if (existing) {
+      return;
+    }
+    await Ad.create(ad);
   } catch (err) {
-    console.error("Erro ao salvar anúncio:", err);
+    console.error("Erro ao salvar o anúncio:", err);
   }
 }
 
-// Para uma busca específica, percorre as páginas de 1 a 10 e salva os anúncios encontrados
+/**
+ * 🔹 **Scrapes ads for a specific search across pages 1 to maxPages and saves them to the database.**
+ * @param {Object} search - The search configuration.
+ * @returns {Promise<void>}
+ */
 async function checkListingsForSearch(search) {
-  console.log(`Iniciando busca para "${search.query}"...`);
-  for (let page = 1; page <= 10; page++) {
+  for (let page = 1; page <= config.maxPages; page++) {
     const url = buildUrl(search, page);
     const html = await fetchPage(url);
     if (!html) {
-      console.warn(`HTML não encontrado na página ${page} para "${search.query}". Pulando...`);
       continue;
     }
     const listings = parseListings(html, search);
-    if (listings.length === 0) {
-      console.log(`Nenhum anúncio encontrado na página ${page} para "${search.query}".`);
-    } else {
-      console.log(`Encontrados ${listings.length} anúncios na página ${page} para "${search.query}".`);
+    if (listings.length > 0) {
       for (const ad of listings) {
         await saveAd(ad);
       }
@@ -205,44 +247,70 @@ async function checkListingsForSearch(search) {
   }
 }
 
-// Executa todas as buscas
+/**
+ * 🔹 **Executes all configured searches to scrape ads.**
+ * @returns {Promise<void>}
+ */
 async function checkAllSearches() {
-  for (const search of searches) {
+  for (const search of config.searches) {
     await checkListingsForSearch(search);
   }
 }
 
-// Agendamento: Executa as buscas a cada hora
+// Schedules the searches to run every hour.
 cron.schedule('0 * * * *', () => {
-  console.log("Executando buscas agendadas...");
   checkAllSearches();
 });
 
-// Executa as buscas imediatamente ao iniciar o app
+// Runs the searches immediately on startup.
 checkAllSearches();
 
-// ----------------------------------------------------
-// 5. Servidor Express com endpoints para listar e excluir anúncios
+/**
+ * 🔹 **Sets up the Express server with endpoints for listing and soft-deleting (blacklisting) ads.**
+ */
 const app = express();
 app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
-// Endpoint para listar todos os anúncios (ordenados por data, mais recentes primeiro)
+/**
+ * 🔹 **GET /ads - Lists all ads that are not blacklisted, sorted based on query parameters.
+ * Query Parameters:
+ *   - superPrice: if "true", sorts ads with superPrice (true) first.
+ *   - recent: if "true", sorts ads by creation date descending (most recent first).
+ *   - priceDesc: if "true", sorts ads by price descending (higher to lower).
+ * If no query parameter is provided, defaults to sorting by creation date descending.
+ */
 app.get('/ads', async (req, res) => {
   try {
-    const ads = await Ad.find().sort({ createdAt: -1 });
+    let sortCriteria = {};
+    if (req.query.superPrice === 'true') {
+      sortCriteria.superPrice = -1;
+    }
+    if (req.query.recent === 'true') {
+      sortCriteria.createdAt = -1;
+    }
+    if (req.query.priceDesc === 'true') {
+      sortCriteria.price = -1;
+    }
+    if (Object.keys(sortCriteria).length === 0) {
+      sortCriteria = { createdAt: -1 };
+    }
+    const ads = await Ad.find({ blacklisted: { $ne: true } }).sort(sortCriteria);
     res.json(ads);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar anúncios.' });
   }
 });
 
-// Endpoint para excluir um anúncio pelo _id_
+/**
+ * 🔹 **DELETE /ads/:id - Marks an ad as blacklisted (soft deletion) so that it is not scraped or listed again.**
+ * @param {string} id - The ID of the ad to blacklist.
+ */
 app.delete('/ads/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const deleted = await Ad.findByIdAndDelete(id);
-    if (!deleted) {
+    const ad = await Ad.findByIdAndUpdate(id, { blacklisted: true }, { new: true });
+    if (!ad) {
       return res.status(404).json({ error: 'Anúncio não encontrado.' });
     }
     res.json({ message: 'Anúncio excluído com sucesso.' });

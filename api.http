@@ -1,0 +1,5 @@
+@baseUrl = http://localhost:6000
+###
+# @name findAll
+GET {{baseUrl}}/ads
+Content-Type: application/json
