@@ -36,7 +36,7 @@ const fetchAdsUseCase = new FetchAdsUseCase(adRepository, scraper);
 // --- Agendamento com Cron ---
 // Agenda a execução do caso de uso de atualização de anúncios a cada 2 horas
 //0 */2 * * *
-cron.schedule('* * * * *', async () => {
+cron.schedule('0 * * * *', async () => {
     console.log("[Cron] Iniciando busca agendada...");
     try {
       await fetchAdsUseCase.execute();
