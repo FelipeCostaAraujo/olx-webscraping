@@ -4,7 +4,7 @@
  * Contains the maximum number of pages to scrape and the search configurations.
  */
 export default {
-  maxPages: 20,
+  maxPages: 25,
   searches: [
     {
       query: "rtx 2080 ti",
@@ -20,6 +20,7 @@ export default {
       baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+3080+ti&o=1",
       regex: /RTX\s*3080\s*Ti/i
     },
+    ,
     {
       query: "rtx 3090",
       maxPrice: 4500,
