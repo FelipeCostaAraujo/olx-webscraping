@@ -5,14 +5,14 @@
  * and exposes endpoints to list and soft-delete (blacklist) ads.
  */
 
-require('dotenv').config();
-const axios = require('axios');
-const cheerio = require('cheerio');
-const cron = require('node-cron');
-const puppeteer = require('puppeteer');
-const express = require('express');
-const mongoose = require('mongoose');
-const config = require('./config');
+import 'dotenv/config';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import cron from 'node-cron';
+import puppeteer from 'puppeteer';
+import express, { Request, Response } from 'express';
+import mongoose from 'mongoose';
+import config from './config';
 
 /**
  * 🔹 **Connects to MongoDB using the provided environment variable.**
@@ -64,7 +64,7 @@ const Ad = mongoose.model('Ad', adSchema);
  * @param {number} page - The page number.
  * @returns {string} - The constructed URL.
  */
-function buildUrl(search, page) {
+function buildUrl(search:any, page:number) {
   const url = page === 1 ? search.baseUrl : search.baseUrl.replace(/&o=1$/, `&o=${page}`);
   console.log(`[URL Builder] Page ${page} URL: ${url}`);
   return url;
@@ -75,9 +75,9 @@ function buildUrl(search, page) {
  * @param {Object} page - The Puppeteer page instance.
  * @returns {Promise<void>}
  */
-async function autoScroll(page) {
+async function autoScroll(page:any) {
   await page.evaluate(async () => {
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       let totalHeight = 0;
       const distance = 100;
       const timer = setInterval(() => {
@@ -98,7 +98,7 @@ async function autoScroll(page) {
  * @param {string} url - The URL of the page.
  * @returns {Promise<string|null>} - The HTML content or null if failed.
  */
-async function fetchPageWithPuppeteer(url) {
+async function fetchPageWithPuppeteer(url:string) {
   let browser;
   try {
     console.log(`[Puppeteer] Iniciando busca: ${url}`);
@@ -117,7 +117,7 @@ async function fetchPageWithPuppeteer(url) {
     await autoScroll(page);
     console.log(`[Puppeteer] Página carregada: ${url}`);
     return await page.content();
-  } catch (err) {
+  } catch (err:any) {
     console.error(`[Puppeteer] Erro ao buscar ${url}: ${err.message}`);
     return null;
   } finally {
@@ -130,7 +130,7 @@ async function fetchPageWithPuppeteer(url) {
  * @param {string} url - The URL of the page.
  * @returns {Promise<string|null>} - The HTML content or null if failed.
  */
-async function fetchPage(url) {
+async function fetchPage(url:string) {
   try {
     console.log(`[Axios] Buscando: ${url}`);
     const { data } = await axios.get(url, {
@@ -144,7 +144,7 @@ async function fetchPage(url) {
     });
     console.log(`[Axios] Página carregada: ${url}`);
     return data;
-  } catch (error) {
+  } catch (error:any) {
     if (error.response && error.response.status === 403) {
       console.warn(`[Axios] 403 para ${url}. Usando Puppeteer...`);
       return await fetchPageWithPuppeteer(url);
@@ -162,9 +162,9 @@ async function fetchPage(url) {
  * @param {Object} search - The search configuration.
  * @returns {Array<Object>} - An array of ad objects.
  */
-function parseListings(html, search) {
+function parseListings(html:string, search:any) {
   const $ = cheerio.load(html);
-  let listings = [];
+  let listings:any = [];
   
   $('a.olx-ad-card__link-wrapper').each((i, el) => {
     const link = $(el).attr('href');
@@ -225,7 +225,7 @@ function parseListings(html, search) {
  * @param {Object} ad - The ad object to save.
  * @returns {Promise<void>}
  */
-async function saveAd(ad) {
+async function saveAd(ad:any) {
   try {
     const existing = await Ad.findOne({ title: ad.title, price: ad.price });
     if (existing) {
@@ -244,7 +244,7 @@ async function saveAd(ad) {
  * @param {Object} search - The search configuration.
  * @returns {Promise<void>}
  */
-async function checkListingsForSearch(search) {
+async function checkListingsForSearch(search:any) {
   console.log(`[Scraper] Iniciando busca para "${search.query}"`);
   for (let page = 1; page <= config.maxPages; page++) {
     const url = buildUrl(search, page);
@@ -305,7 +305,7 @@ const PORT = process.env.PORT || 3000;
  */
 app.get('/ads', async (req, res) => {
   try {
-    let sortCriteria = {};
+    let sortCriteria:any = {};
   
     if (req.query.superPrice === 'true') {
       sortCriteria.superPrice = -1;
@@ -341,7 +341,7 @@ app.get('/ads', async (req, res) => {
  * 🔹 **DELETE /ads/:id - Marks an ad as blacklisted (soft deletion) so that it is not scraped or listed again.**
  * @param {string} id - The ID of the ad to blacklist.
  */
-app.delete('/ads/:id', async (req, res) => {
+app.delete('/ads/:id', async (req:any, res:any) => {
   const { id } = req.params;
   try {
     const ad = await Ad.findByIdAndUpdate(id, { blacklisted: true }, { new: true });
