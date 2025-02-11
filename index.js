@@ -24,7 +24,7 @@ if (!MONGODB_URI) {
 }
 
 mongoose.connect(MONGODB_URI)
-  .then(() => {})
+  .then(() => console.log("Conectado ao MongoDB."))
   .catch((err) => {
     console.error("Erro ao conectar no MongoDB:", err);
     process.exit(1);
@@ -65,8 +65,9 @@ const Ad = mongoose.model('Ad', adSchema);
  * @returns {string} - The constructed URL.
  */
 function buildUrl(search, page) {
-  if (page === 1) return search.baseUrl;
-  return search.baseUrl.replace(/&o=1$/, `&o=${page}`);
+  const url = page === 1 ? search.baseUrl : search.baseUrl.replace(/&o=1$/, `&o=${page}`);
+  console.log(`[URL Builder] Page ${page} URL: ${url}`);
+  return url;
 }
 
 /**
@@ -100,6 +101,7 @@ async function autoScroll(page) {
 async function fetchPageWithPuppeteer(url) {
   let browser;
   try {
+    console.log(`[Puppeteer] Iniciando busca: ${url}`);
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -113,8 +115,10 @@ async function fetchPageWithPuppeteer(url) {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForSelector('a.olx-ad-card__link-wrapper', { timeout: 60000 });
     await autoScroll(page);
+    console.log(`[Puppeteer] Página carregada: ${url}`);
     return await page.content();
   } catch (err) {
+    console.error(`[Puppeteer] Erro ao buscar ${url}: ${err.message}`);
     return null;
   } finally {
     if (browser) await browser.close();
@@ -128,6 +132,7 @@ async function fetchPageWithPuppeteer(url) {
  */
 async function fetchPage(url) {
   try {
+    console.log(`[Axios] Buscando: ${url}`);
     const { data } = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
@@ -137,11 +142,14 @@ async function fetchPage(url) {
         'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
       }
     });
+    console.log(`[Axios] Página carregada: ${url}`);
     return data;
   } catch (error) {
     if (error.response && error.response.status === 403) {
+      console.warn(`[Axios] 403 para ${url}. Usando Puppeteer...`);
       return await fetchPageWithPuppeteer(url);
     } else {
+      console.error(`[Axios] Erro ao buscar ${url}: ${error.message}`);
       return null;
     }
   }
@@ -170,8 +178,11 @@ function parseListings(html, search) {
     const imgElement = parent.find('img').first();
     const imageUrl = imgElement.attr('data-src') || imgElement.attr('src') || "";
     
-    const detailsText = parent.find('.olx-ad-card__bottom').text().trim();
-    
+    // Tenta extrair os detalhes (ex: "• Santa Maria - RS | 14 de jan, 00:24")
+    let detailsText = parent.find('.olx-ad-card__bottom').text().trim();
+    if (!detailsText) {
+      detailsText = parent.find('span').filter((index, el) => $(el).text().trim().startsWith("•")).first().text().trim();
+    }
     let location = "";
     let publishedAt = "";
     if (detailsText) {
@@ -204,9 +215,9 @@ function parseListings(html, search) {
     }
   });
   
+  console.log(`[Parser] ${listings.length} anúncios extraídos para "${search.query}"`);
   return listings;
 }
-
 
 /**
  * 🔹 **Saves an ad to the database if it does not already exist.
@@ -218,11 +229,13 @@ async function saveAd(ad) {
   try {
     const existing = await Ad.findOne({ title: ad.title, price: ad.price });
     if (existing) {
+      console.log(`[Database] Anúncio já existe: ${ad.title}`);
       return;
     }
     await Ad.create(ad);
+    console.log(`[Database] Anúncio salvo: ${ad.title}`);
   } catch (err) {
-    console.error("Erro ao salvar o anúncio:", err);
+    console.error("[Database] Erro ao salvar o anúncio:", err);
   }
 }
 
@@ -232,14 +245,19 @@ async function saveAd(ad) {
  * @returns {Promise<void>}
  */
 async function checkListingsForSearch(search) {
+  console.log(`[Scraper] Iniciando busca para "${search.query}"`);
   for (let page = 1; page <= config.maxPages; page++) {
     const url = buildUrl(search, page);
     const html = await fetchPage(url);
     if (!html) {
+      console.warn(`[Scraper] HTML não encontrado na página ${page} para "${search.query}"`);
       continue;
     }
     const listings = parseListings(html, search);
-    if (listings.length > 0) {
+    if (listings.length === 0) {
+      console.log(`[Scraper] Nenhum anúncio encontrado na página ${page} para "${search.query}"`);
+    } else {
+      console.log(`[Scraper] Encontrados ${listings.length} anúncios na página ${page} para "${search.query}"`);
       for (const ad of listings) {
         await saveAd(ad);
       }
@@ -252,13 +270,16 @@ async function checkListingsForSearch(search) {
  * @returns {Promise<void>}
  */
 async function checkAllSearches() {
+  console.log("[Scraper] Executando todas as buscas...");
   for (const search of config.searches) {
     await checkListingsForSearch(search);
   }
+  console.log("[Scraper] Todas as buscas finalizadas.");
 }
 
 // Schedules the searches to run every hour.
 cron.schedule('0 * * * *', () => {
+  console.log("[Cron] Iniciando busca agendada...");
   checkAllSearches();
 });
 
@@ -285,11 +306,11 @@ const PORT = process.env.PORT || 3000;
 app.get('/ads', async (req, res) => {
   try {
     let sortCriteria = {};
-
+  
     if (req.query.superPrice === 'true') {
       sortCriteria.superPrice = -1;
     }
-
+  
     if (req.query.price) {
       if (req.query.price === 'asc') {
         sortCriteria.price = 1;
@@ -297,7 +318,7 @@ app.get('/ads', async (req, res) => {
         sortCriteria.price = -1;
       }
     }
-
+  
     if (req.query.published) {
       if (req.query.published === 'first') {
         sortCriteria.createdAt = -1;
@@ -307,8 +328,9 @@ app.get('/ads', async (req, res) => {
     } else {
       sortCriteria.createdAt = -1;
     }
-
+  
     const ads = await Ad.find({ blacklisted: { $ne: true } }).sort(sortCriteria);
+    console.log(`[API] Retornando ${ads.length} anúncios.`);
     res.json(ads);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar anúncios.' });
@@ -326,6 +348,7 @@ app.delete('/ads/:id', async (req, res) => {
     if (!ad) {
       return res.status(404).json({ error: 'Anúncio não encontrado.' });
     }
+    console.log(`[API] Anúncio excluído: ${ad.title}`);
     res.json({ message: 'Anúncio excluído com sucesso.' });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao excluir o anúncio.' });
@@ -333,5 +356,5 @@ app.delete('/ads/:id', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`[API] Servidor rodando na porta ${PORT}`);
 });
