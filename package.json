@@ -22,7 +22,8 @@
     "express": "^4.21.2",
     "mongoose": "^8.10.0",
     "node-cron": "^3.0.3",
-    "puppeteer": "^24.2.0"
+    "puppeteer": "^24.2.0",
+    "sentiment": "^5.0.2"
   },
   "devDependencies": {
     "@types/cheerio": "^0.22.35",
@@ -30,6 +31,7 @@
     "@types/node": "^22.13.1",
     "@types/node-cron": "^3.0.11",
     "@types/puppeteer": "^5.4.7",
+    "@types/sentiment": "^5.0.4",
     "nodemon": "^3.1.9",
     "pm2": "^5.4.3",
     "ts-node-dev": "^2.0.0",
