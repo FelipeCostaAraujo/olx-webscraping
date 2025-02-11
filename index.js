@@ -277,8 +277,8 @@ async function checkAllSearches() {
   console.log("[Scraper] Todas as buscas finalizadas.");
 }
 
-// Schedules the searches to run every hour.
-cron.schedule('0 * * * *', () => {
+// Schedules the searches to run every 2 hours.
+cron.schedule('0 */2 * * *', () => {
   console.log("[Cron] Iniciando busca agendada...");
   checkAllSearches();
 });
