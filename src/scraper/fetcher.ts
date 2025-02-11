@@ -29,39 +29,48 @@ export async function autoScroll(page: any): Promise<void> {
  * @param {string} url - The URL of the page.
  * @returns {Promise<string|null>} - The HTML content or null if failed.
  */
-export async function fetchPageWithPuppeteer(url: string): Promise<string | null> {
-  let browser;
-  try {
-    console.log(`[Puppeteer] Iniciando busca: ${url}`);
-    browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    const page = await browser.newPage();
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
-      'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-      'Chrome/105.0.0.0 Safari/537.36'
-    );
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForSelector('a.olx-ad-card__link-wrapper', { timeout: 60000 });
-    await autoScroll(page);
-    console.log(`[Puppeteer] Página carregada: ${url}`);
-    return await page.content();
-  } catch (err: any) {
-    console.error(`[Puppeteer] Erro ao buscar ${url}: ${err.message}`);
-    return null;
-  } finally {
-    if (browser) await browser.close();
+async function fetchPageWithPuppeteer(url: string, isCarSearch: boolean = false): Promise<string | null> {
+    let browser;
+    try {
+      console.log(`[Puppeteer] Iniciando busca: ${url}`);
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+      const page = await browser.newPage();
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
+        'AppleWebKit/537.36 (KHTML, like Gecko) ' +
+        'Chrome/105.0.0.0 Safari/537.36'
+      );
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      
+      // Se for busca de carro, aguarde por um seletor específico para carros.
+      if (isCarSearch) {
+        // Por exemplo, aguarda pelo link de anúncio com data-testid="adcard-link"
+        await page.waitForSelector('a[data-testid="adcard-link"]', { timeout: 60000 });
+      } else {
+        // Para outras categorias, aguarde pelo seletor antigo
+        await page.waitForSelector('a.olx-ad-card__link-wrapper', { timeout: 60000 });
+      }
+      
+      await autoScroll(page);
+      console.log(`[Puppeteer] Página carregada: ${url}`);
+      return await page.content();
+    } catch (err: any) {
+      console.error(`[Puppeteer] Erro ao buscar ${url}: ${err.message}`);
+      return null;
+    } finally {
+      if (browser) await browser.close();
+    }
   }
-}
-
+  
 /**
  * 🔹 **Fetches the HTML content of a page using Axios, falling back to Puppeteer on 403 errors.**
  * @param {string} url - The URL of the page.
  * @returns {Promise<string|null>} - The HTML content or null if failed.
  */
-export async function fetchPage(url: string): Promise<string | null> {
+export async function fetchPage(url: string,isCarSearch: boolean = false): Promise<string | null> {
   try {
     console.log(`[Axios] Buscando: ${url}`);
     const { data } = await axios.get(url, {
@@ -78,7 +87,7 @@ export async function fetchPage(url: string): Promise<string | null> {
   } catch (error: any) {
     if (error.response && error.response.status === 403) {
       console.warn(`[Axios] 403 para ${url}. Usando Puppeteer...`);
-      return await fetchPageWithPuppeteer(url);
+      return await fetchPageWithPuppeteer(url,isCarSearch);
     } else {
       console.error(`[Axios] Erro ao buscar ${url}: ${error.message}`);
       return null;

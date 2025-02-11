@@ -1,6 +1,7 @@
 import express from 'express';
 import adsRouter from './routers/ads';
 import priceTrendRouter from './routers/priceTrend';
+import predictionsRouter from './routers/predictions';
 
 /**
  * 🔹 **Sets up the Express server with endpoints for listing and soft-deleting (blacklisting) ads.**
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use('/ads', adsRouter);
 app.use('/price-trend', priceTrendRouter);
+app.use('/predictions', predictionsRouter);
 
 app.listen(PORT, () => {
   console.log(`[API] Servidor rodando na porta ${PORT}`);

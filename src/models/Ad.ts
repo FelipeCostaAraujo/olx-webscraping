@@ -23,6 +23,8 @@ import mongoose from 'mongoose';
  * Cada item possui:
  *    - price: Número (valor do preço)
  *    - date: Data em que o preço foi registrado
+ * 
+ * @property {String} category - Categoria do anúncio, ex: "hardware" ou "car".
  */
 const adSchema = new mongoose.Schema({
   title: String,
@@ -46,6 +48,11 @@ const adSchema = new mongoose.Schema({
       date: { type: Date, default: Date.now }
     }],
     default: []
+  },
+  category: {
+    type: String,
+    enum: ['hardware', 'car'], // Defina os tipos permitidos
+    default: 'hardware'
   }
 });
 
