@@ -3,6 +3,7 @@ import { fetchPage } from './fetcher';
 import { parseListings, parseCarAd } from './parser';
 import Ad from '../models/Ad';
 import { classifyAd } from '../nlp/classifier';
+import NotificationService from '../services/notification-service';
 
 /**
  * 🔹 **Saves an ad to the database if it does not already exist.
@@ -19,14 +20,40 @@ export async function saveAd(ad: any): Promise<void> {
                 existing.priceHistory.push({ price: ad.price, date: new Date() });
                 existing.price = ad.price;
                 await existing.save();
+                const sortedHistory = [...existing.priceHistory].sort(
+                    (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
+                  );
+                  const previousPrice = sortedHistory.length > 0 ? sortedHistory[sortedHistory.length - 1].price : existing.price;          
                 console.log(`[Database] Atualizado preço do anúncio: ${ad.title}`);
+                if (ad.superPrice && ad.price < (previousPrice ?? 0)) {
+                    const notificationService = new NotificationService();
+                    notificationService.sendPriceDropNotification({
+                        adId: existing._id.toString(),
+                        title: existing.title as string,
+                        price: existing.price as number,
+                        url: existing.url as string,
+                        imageUrl: existing.imageUrl,
+                        createdAt: existing.createdAt,
+                    }, previousPrice ?? 0);
+                  }
             } else {
                 console.log(`[Database] Anúncio já existe sem alteração de preço: ${ad.title}`);
             }
             return;
         }
         ad.priceHistory = [{ price: ad.price, date: new Date() }];
-        await Ad.create(ad);
+        const newAd = await Ad.create(ad);
+        if (newAd.superPrice) {
+            const notificationService = new NotificationService();
+            notificationService.sendPushNotification({
+                adId: newAd._id.toString(),
+                title: newAd.title as string,
+                price: newAd.price as number,
+                url: newAd.url as string,
+                imageUrl: newAd.imageUrl,
+                createdAt: newAd.createdAt,
+            });
+          }
         console.log(`[Database] Anúncio salvo: ${ad.title}`);
     } catch (err) {
         console.error("[Database] Erro ao salvar o anúncio:", err);
