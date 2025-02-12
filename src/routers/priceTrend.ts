@@ -14,7 +14,7 @@ router.get('/ads/:id/price-trend', async (req: any, res: any) => {
     if (!ad) {
       return res.status(404).json({ error: 'Anúncio não encontrado.' });
     }
-    // Mapeia o priceHistory para garantir que cada registro possua a propriedade price como number
+
     const priceHistory = ad.priceHistory.map((record: any) => ({
       date: record.date,
       price: record.price ?? 0

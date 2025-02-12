@@ -3,10 +3,12 @@ FROM node:20-buster
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci --only=production
+
+RUN npm run build
 
 COPY . .
 
 EXPOSE 6000
 
-CMD ["node", "index.js"]
+CMD ["node", "dist/index.js"]

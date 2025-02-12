@@ -1,16 +1,13 @@
 import * as tf from '@tensorflow/tfjs-node';
 import * as fs from 'fs';
 
-// Exemplo: suponha que seu dataset seja um array de objetos com 'features' e 'target'
 interface DataPoint {
-  features: number[]; // Ex: [price, daysSincePublication, goodStateIndicator]
-  target: number;     // Ex: score de qualidade ou probabilidade (entre 0 e 1)
+  features: number[];
+  target: number;
 }
 
-// Carregue ou defina seu dataset aqui. Este é um exemplo fictício.
 const dataset: DataPoint[] = JSON.parse(fs.readFileSync('artifacts/data/dataset.json', 'utf8'));
 
-// Função para converter os dados em tensores
 function prepareData(data: DataPoint[]) {
   const featureValues = data.map(d => d.features);
   const targets = data.map(d => d.target);
@@ -20,10 +17,8 @@ function prepareData(data: DataPoint[]) {
 }
 
 async function trainModel() {
-  // Extraia os tensores do dataset
   const { featureTensor, targetTensor } = prepareData(dataset);
 
-  // Crie um modelo simples de regressão
   const model = tf.sequential();
   model.add(tf.layers.dense({ units: 32, activation: 'relu', inputShape: [featureTensor.shape[1]] }));
   model.add(tf.layers.dense({ units: 16, activation: 'relu' }));
@@ -34,7 +29,6 @@ async function trainModel() {
     loss: 'meanSquaredError'
   });
 
-  // Treine o modelo
   await model.fit(featureTensor, targetTensor, {
     epochs: 50,
     batchSize: 32,
@@ -46,7 +40,6 @@ async function trainModel() {
     }
   });
 
-  // Salve o modelo (certifique-se de que a pasta "model" exista ou crie-a)
   await model.save('file://artifacts/model');
   console.log('Modelo treinado e salvo com sucesso!');
 }

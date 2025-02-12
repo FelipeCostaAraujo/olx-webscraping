@@ -51,9 +51,11 @@ const adSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['hardware', 'car'], // Defina os tipos permitidos
+    enum: ['hardware', 'car'],
     default: 'hardware'
-  }
+  },
+  priceTrend: { type: String, required: false },
+  priceDifference: { type: Number, required: false }
 });
 
 const Ad = mongoose.model('Ad', adSchema);

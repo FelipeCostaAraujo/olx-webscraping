@@ -2,12 +2,11 @@ services:
   app:
     build: .
     container_name: olx-app
-    env_file: .env
     ports:
       - "6000:6000"
     networks:
-      - solinski-network
+      - home-network
 
 networks:
-  solinski-network:
+  home-network:
     external: true

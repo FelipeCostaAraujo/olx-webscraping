@@ -45,12 +45,9 @@ async function fetchPageWithPuppeteer(url: string, isCarSearch: boolean = false)
       );
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
       
-      // Se for busca de carro, aguarde por um seletor específico para carros.
       if (isCarSearch) {
-        // Por exemplo, aguarda pelo link de anúncio com data-testid="adcard-link"
         await page.waitForSelector('a[data-testid="adcard-link"]', { timeout: 60000 });
       } else {
-        // Para outras categorias, aguarde pelo seletor antigo
         await page.waitForSelector('a.olx-ad-card__link-wrapper', { timeout: 60000 });
       }
       
