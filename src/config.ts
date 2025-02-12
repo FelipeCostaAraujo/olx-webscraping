@@ -4,7 +4,7 @@
  * Contains the maximum number of pages to scrape and the search configurations.
  */
 export default {
-  maxPages: 20,
+  maxPages: 10,
   searches: [
     {
       query: "gtx 1080 ti",

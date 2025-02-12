@@ -25,3 +25,20 @@ Content-Type: application/json
 # GET PREDICTION FOR A SPECIFIC AD (SUBSTITUA {{adId}} PELO ID REAL)
 GET {{baseUrl}}/predictions/ads/{{adId}}/prediction
 Content-Type: application/json
+
+###
+# POST TEST NOTIFICATION
+POST {{baseUrl}}/notifications/test
+Content-Type: application/json
+
+{
+    "adId": "{{adId}}",
+    "title": "Test Ad",
+    "price": 2100,
+    "url": "https://sp.olx.com.br/sao-paulo-e-regiao/informatica/placas-de-video/test"
+}
+
+###
+# GET ALL NOTIFICATIONS
+GET {{baseUrl}}/notifications
+Content-Type: application/json

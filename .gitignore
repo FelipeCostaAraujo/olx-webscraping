@@ -61,3 +61,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 deploy/api/.terraform
 .terraform.lock.hcl
+
+
+./olx-webscraping.json
+olx-webscraping.json
