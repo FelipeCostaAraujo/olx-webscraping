@@ -1,6 +1,5 @@
 import config from '../config';
 import { fetchPage } from './fetcher';
-// Importa ambos os parsers – o padrão e o de carro
 import { parseListings, parseCarAd } from './parser';
 import Ad from '../models/Ad';
 import { classifyAd } from '../nlp/classifier';
@@ -52,10 +51,8 @@ function buildUrl(search: any, page: number): string {
  * @returns {Promise<void>}
  */
 async function processAd(ad: any, category: string): Promise<void> {
-    // Adiciona a classificação ao anúncio
     const classification = classifyAd(ad.title);
     ad.classification = classification;
-    // Define a categoria
     ad.category = category;
     await saveAd(ad);
 }
@@ -70,17 +67,14 @@ export async function checkListingsForSearch(search: any): Promise<void> {
     console.log(`[Scraper] Iniciando busca para "${search.query}"`);
     for (let page = 1; page <= config.maxPages; page++) {
         const url = buildUrl(search, page);
-        // Passe o parâmetro isCarSearch se necessário para a função fetchPage
         const html = await fetchPage(url, search.isCarSearch ?? false);
         if (!html) {
             console.warn(`[Scraper] HTML não encontrado na página ${page} para "${search.query}"`);
             continue;
         }
 
-        // Log para verificar parte do conteúdo do HTML
         console.log(`[Scraper] HTML snippet da página ${page}: ${html.substring(0, 300)}\n...\n`);
 
-        // Seleciona o parser adequado conforme o tipo de busca
         const listings = search.isCarSearch ? parseCarAd(html, search) : parseListings(html, search);
         if (listings.length === 0) {
             console.log(`[Scraper] Nenhum anúncio encontrado na página ${page} para "${search.query}"`);

@@ -24,7 +24,6 @@ export function parseListings(html: string, search: any): any[] {
     const imgElement = parent.find('img').first();
     const imageUrl = imgElement.attr('data-src') || imgElement.attr('src') || "";
     
-    // Extração de detalhes (ex: "• Santa Maria - RS | 14 de jan, 00:24")
     let detailsText = parent.find('.olx-ad-card__bottom').text().trim();
     if (!detailsText) {
       detailsText = parent.find('span')
@@ -43,12 +42,10 @@ export function parseListings(html: string, search: any): any[] {
       }
     }
     
-    // Se o título não corresponder ao regex da busca, ignora
     if (!search.regex.test(title)) {
       return;
     }
     
-    // Remove caracteres indesejados e converte para número
     let price = parseFloat(priceText.replace(/[^\d,]/g, '').replace(',', '.'));
     if (price && price <= search.maxPrice) {
       const isSuperPrice = price <= search.superPriceThreshold;
@@ -81,7 +78,6 @@ export function parseCarAd(html: string, search: any): any[] {
   const $ = cheerio.load(html);
   const listings: any[] = [];
   
-  // Seleciona os cards de carro; no exemplo, utilizamos a classe "AdCard_root__Jkql_"
   $('section.AdCard_root__Jkql_').each((i, el) => {
     const title = $(el).find('a[data-testid="adcard-link"] h2').text().trim();
     const url = $(el).find('a[data-testid="adcard-link"]').attr('href');
@@ -89,22 +85,17 @@ export function parseCarAd(html: string, search: any): any[] {
     const location = $(el).find('.AdCard_locationdate__CaIOt p').text().trim();
     const imageUrl = $(el).find('picture img').attr('src');
     
-    // Se houver um elemento para data de publicação, extraia-o;
-    // caso contrário, deixe como string vazia.
     let publishedAt = "";
-    // Exemplo: se a data estiver dentro de um elemento com uma classe específica (ajuste conforme necessário)
-    // publishedAt = $(el).find('.AdCard_date__someClass').text().trim();
+    // publishedAt = $(el).find('.AdCard_date__').text().trim();
     
-    // Converte o preço, removendo "R$" e separadores
     let price = parseFloat(
       priceText.replace('R$', '')
                .replace(/\./g, '')
                .replace(',', '.')
     );
     
-    // Se o título não bate com a regex, ignora
     if (!search.regex.test(title)) return;
-    // Se o preço ultrapassar o máximo definido, ignora
+    
     if (price > search.maxPrice) return;
     
     const isSuperPrice = price <= search.superPriceThreshold;
