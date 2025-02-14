@@ -4,8 +4,6 @@ import Notification from '../models/Notification';
 
 var serviceAccount = require("../../olx-webscraping.json");
 
-const deviceToken = "dIWe5vArQ--gYdBwxP-oHt:APA91bGP4m1TOl_q9L4ANQgH1mPNKMh77VQWMjPP_KXUKz0bK0Ital6WItkSCGJbeehdLhhUBhQl6y_TjyRnbrBxpPw0vNTf2ELwe3aGzJdEpcsdsKaDQEA";
-
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
@@ -46,8 +44,6 @@ class NotificationService {
 
             console.log('[NotificationService] Notificação salva:', notifity);
 
-
-            // Envia a mensagem. A função retorna um ID de mensagem em caso de sucesso.
             const response = await admin.messaging().send(message);
             console.log('Notificação enviada com sucesso. Message ID:', response);
         } catch (error) {
@@ -63,13 +59,12 @@ class NotificationService {
     */
     async sendPriceDropNotification(ad: Ad, previousPrice: number): Promise<void> {
         try {
-            // Constrói a mensagem para enviar via FCM para o tópico
             const message: Message = {
-                topic: "superPriceAds", // Todos os dispositivos inscritos nesse tópico receberão a notificação.
+                topic: "superPriceAds",
                 notification: {
                     title: 'Preço Atualizado!',
                     body: `O preço do anúncio "${ad.title}" caiu de ${previousPrice.toString()} para ${ad.price.toString()}`,
-                    imageUrl: ad.imageUrl ? ad.imageUrl : undefined, // Inclui a imagem se existir.
+                    imageUrl: ad.imageUrl ? ad.imageUrl : undefined,
                 },
                 data: {
                     id: ad.adId,

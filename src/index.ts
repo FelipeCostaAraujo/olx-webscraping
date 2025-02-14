@@ -1,33 +1,38 @@
-/**
- * 🔹 **Main API file for scraping and serving OLX ads.**
- * 
- * This file connects to MongoDB, defines the Ad model, scrapes ads using Axios (with Puppeteer fallback),
- * and exposes endpoints to list and soft-delete (blacklist) ads.
- */
-
 import 'dotenv/config';
 import cron from 'node-cron';
 import connectToDatabase from './database';
-import { checkAllSearches, checkCarSearches } from './scraper/scraper';
+import Scraper from './scraper/scraper';
 import './server';
+import NotificationService from './services/notification-service';
+import { generateDataset } from './ml/generateDataset';
 
-// Conecta ao MongoDB
-connectToDatabase();
+const scraper = new Scraper(new NotificationService());
 
-// Agenda as buscas para rodar a cada 2 horas.
-cron.schedule('0 */2 * * *', () => {
-  console.log("[Cron] Iniciando busca agendada...");
-  checkAllSearches();
-});
+async function main() {
+  try {
+    await connectToDatabase();
+    console.log("Conexão com o MongoDB estabelecida.");
 
-// Executa as buscas imediatamente ao iniciar a aplicação.
-checkAllSearches();
+    await generateDataset();
+    console.log("Dataset gerado com sucesso.");
 
+    scraper.checkAllSearches();
+    scraper.checkCarSearches();
 
-// Chamada imediata:
-checkCarSearches();
+    // Agenda as buscas para rodar a cada 2 horas
+    cron.schedule('0 */2 * * *', () => {
+      console.log("[Cron] Iniciando busca agendada...");
+      scraper.checkAllSearches();
+    });
 
-cron.schedule('0 */2 * * *', () => {
-  console.log("[Cron] Iniciando buscas de carros agendadas...");
-  checkCarSearches();
-});
+    cron.schedule('0 */2 * * *', () => {
+      console.log("[Cron] Iniciando buscas de carros agendadas...");
+      scraper.checkCarSearches();
+    });
+  } catch (error) {
+    console.error("Erro na inicialização:", error);
+    process.exit(1);
+  }
+}
+
+main();

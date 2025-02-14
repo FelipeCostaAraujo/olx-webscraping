@@ -1,4 +1,3 @@
-import { image } from '@tensorflow/tfjs-node';
 import mongoose from 'mongoose';
 
 /**

@@ -77,41 +77,51 @@ export function parseListings(html: string, search: any): any[] {
 export function parseCarAd(html: string, search: any): any[] {
   const $ = cheerio.load(html);
   const listings: any[] = [];
-  
-  $('section.AdCard_root__Jkql_').each((i, el) => {
-    const title = $(el).find('a[data-testid="adcard-link"] h2').text().trim();
-    const url = $(el).find('a[data-testid="adcard-link"]').attr('href');
-    const priceText = $(el).find('h3.AdCard_price___yY62').text().trim();
-    const location = $(el).find('.AdCard_locationdate__CaIOt p').text().trim();
-    const imageUrl = $(el).find('picture img').attr('src');
-    
-    let publishedAt = "";
-    // publishedAt = $(el).find('.AdCard_date__').text().trim();
-    
+
+  $('section[data-ds-component="DS-AdCard"]').each((i, el) => {
+    const linkEl = $(el).find('a[data-ds-component="DS-NewAdCard-Link"]');
+    const url = linkEl.attr('href') || "";
+    const title = linkEl.find('h2').text().trim();
+
+    const priceText = $(el)
+      .find('div.olx-ad-card__details-price--vertical h3.olx-ad-card__price')
+      .text()
+      .trim();
     let price = parseFloat(
-      priceText.replace('R$', '')
-               .replace(/\./g, '')
-               .replace(',', '.')
+      priceText.replace(/[^\d,]/g, '').replace(',', '.')
     );
-    
+
+    const location = $(el)
+      .find('div.olx-ad-card__location-date-container--vertical p')
+      .text()
+      .trim() || "";
+
+    let kmText = "";
+    const kmSpan = $(el).find('li.olx-ad-card__labels-item span[aria-label*="quilômetros rodados"]');
+    if (kmSpan.length > 0) {
+      kmText = kmSpan.attr('aria-label') || "";
+    }
+
+    const kilometers = parseInt(kmText.replace(/[^0-9]/g, ''), 10);
+
     if (!search.regex.test(title)) return;
-    
     if (price > search.maxPrice) return;
-    
+
     const isSuperPrice = price <= search.superPriceThreshold;
-    
+
     listings.push({
       title,
       price,
       url,
-      imageUrl,
+      imageUrl: $(el).find('div.olx-image-carousel picture img').attr('src') || "",
       searchQuery: search.query,
       superPrice: isSuperPrice,
       location,
-      publishedAt
+      kilometers,
+      publishedAt: ""
     });
   });
-  
+
   console.log(`[ParserCar] ${listings.length} anúncios de carros extraídos para "${search.query}"`);
   return listings;
 }
