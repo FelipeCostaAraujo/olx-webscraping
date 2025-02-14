@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import Ad from '../models/Ad';
 import { predictAdQuality } from '../ml/predictor';
 import { extractFeaturesFromAd } from '../ml/features';
@@ -11,10 +11,12 @@ const router = Router();
  */
 router.get('/ads/:id/prediction', async (req: any, res: any) => {
   try {
+    console.log(`[API] Fazendo previsão para o anúncio ${req.params.id}...`);
     const ad = await Ad.findById(req.params.id);
     if (!ad) {
       return res.status(404).json({ error: 'Anúncio não encontrado.' });
     }
+    console.log(`[API] Anúncio encontrado: ${ad.title}`);
     const features = extractFeaturesFromAd(ad);
     const prediction = await predictAdQuality(features);
     res.json({ prediction });

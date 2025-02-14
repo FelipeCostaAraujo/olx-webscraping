@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:6000
-@adId = 67ab7b6042bc114f07b487ae
+@adId = 67aec3bb9c6f39cd9af1e8ed
 
 ###
 # GET ALL ADS

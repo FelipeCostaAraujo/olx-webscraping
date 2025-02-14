@@ -55,7 +55,8 @@ const adSchema = new mongoose.Schema({
     default: 'hardware'
   },
   priceTrend: { type: String, required: false },
-  priceDifference: { type: Number, required: false }
+  priceDifference: { type: Number, required: false },
+  kilometers: { type: Number, required: false }
 });
 
 const Ad = mongoose.model('Ad', adSchema);
