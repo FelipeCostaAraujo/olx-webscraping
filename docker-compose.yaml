@@ -1,12 +1,24 @@
 services:
-  app:
-    build: .
-    container_name: olx-app
+  mongodb:
+    image: docker.io/bitnami/mongodb:latest
+    restart: always
+    container_name: olx-webscraping-db
     ports:
-      - "6000:6000"
+      - 27017:27017
+    environment:
+      MONGODB_ADVERTISED_HOSTNAME: mongodb
+      MONGODB_ROOT_USERNAME: felipe
+      MONGODB_ROOT_PASSWORD: ghV1XZ7OlojdG42
+      MONGODB_DATABASE: olx
+    volumes:
+      - mongodb_data:/bitnami/mongodb
     networks:
       - home-network
 
 networks:
   home-network:
     external: true
+
+volumes:
+  mongodb_data:
+    driver: local

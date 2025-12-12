@@ -12,28 +12,31 @@ export function parseListings(html: string, search: any): any[] {
   const $ = cheerio.load(html);
   const listings: any[] = [];
   
-  $('a.olx-ad-card__link-wrapper').each((i, el) => {
+  // Nova estrutura da OLX (2024): usa data-testid="adcard-link"
+  $('a[data-testid="adcard-link"]').each((i, el) => {
     const link = $(el).attr('href');
-    const titleId = $(el).attr('aria-labelledby');
-    let title = "";
-    if (titleId) {
-      title = $(`#${titleId}`).text().trim();
-    }
-    const parent = $(el).parent();
-    const priceText = parent.find('.olx-ad-card__price').text().trim();
-    const imgElement = parent.find('img').first();
-    const imageUrl = imgElement.attr('data-src') || imgElement.attr('src') || "";
+    const title = $(el).attr('title') || $(el).find('h2').text().trim();
     
-    let detailsText = parent.find('.olx-ad-card__bottom').text().trim();
-    if (!detailsText) {
-      detailsText = parent.find('span')
-        .filter((index, el) => $(el).text().trim().startsWith("•"))
-        .first().text().trim();
-    }
+    // Buscar o card pai (section.olx-adcard)
+    const card = $(el).closest('section.olx-adcard');
+    
+    // Extrair preço
+    const priceText = card.find('h3.olx-adcard__price').text().trim();
+    
+    // Extrair imagem
+    const imgElement = card.find('img').first();
+    const imageUrl = imgElement.attr('src') || imgElement.attr('data-src') || "";
+    
+    // Extrair localização e data (no bottombody)
+    const bottomBody = card.find('.olx-adcard__bottombody');
+    const locationText = bottomBody.find('.olx-adcard__location-date').text().trim();
+    
     let location = "";
     let publishedAt = "";
-    if (detailsText) {
-      const parts = detailsText.replace('•', '').split('|');
+    
+    if (locationText) {
+      // Formato típico: "São Paulo - SP • Hoje, 15:30"
+      const parts = locationText.split('•');
       if (parts.length > 0) {
         location = parts[0].trim();
       }

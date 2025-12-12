@@ -45,13 +45,9 @@ export async function fetchPage(url: string, isCarSearch: boolean = false): Prom
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
     if (isCarSearch) {
-      //await page.waitForSelector('a[data-testid="adcard-link"]', { timeout: 60000 });
-      // const htmlContent = await page.content();
-      // console.log("Tamanho do HTML:", htmlContent.length);
-      // await page.screenshot({ path: 'debug.png', fullPage: true });
-      await page.waitForSelector('a[data-ds-component="DS-NewAdCard-Link"]', { timeout: 60000 });
+      await page.waitForSelector('a[data-testid="adcard-link"]', { timeout: 60000 });
     } else {
-      await page.waitForSelector('a.olx-ad-card__link-wrapper', { timeout: 60000 });
+      await page.waitForSelector('a[data-testid="adcard-link"]', { timeout: 60000 });
     }
 
     await autoScroll(page);
