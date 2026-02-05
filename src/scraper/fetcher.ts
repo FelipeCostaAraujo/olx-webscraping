@@ -1,4 +1,7 @@
 import puppeteer from 'puppeteer';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('Puppeteer');
 
 /**
  * 🔹 **Performs auto-scroll on a Puppeteer page to load lazy-loaded content.**
@@ -31,7 +34,7 @@ export async function autoScroll(page: any): Promise<void> {
 export async function fetchPage(url: string, isCarSearch: boolean = false): Promise<string | null> {
   let browser;
   try {
-    console.log(`[Puppeteer] Iniciando busca: ${url}`);
+    log.info('Iniciando busca', { url });
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -51,10 +54,10 @@ export async function fetchPage(url: string, isCarSearch: boolean = false): Prom
     }
 
     await autoScroll(page);
-    console.log(`[Puppeteer] Página carregada: ${url}`);
+    log.info('Página carregada', { url });
     return await page.content();
   } catch (err: any) {
-    console.error(`[Puppeteer] Erro ao buscar ${url}: ${err.message}`);
+    log.error('Erro ao buscar', { url, erro: err?.message ?? err });
     return null;
   } finally {
     if (browser) await browser.close();

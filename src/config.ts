@@ -59,13 +59,13 @@ export default {
       baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=nvidia+tesla+t4&o=1",
       regex: /TESLA\s*T4\b/i
     },
-    {
-      query: "rtx 2080 ti",
-      maxPrice: 2000,
-      superPriceThreshold: 1500,
-      baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+2080+ti&o=1",
-      regex: /RTX\s*2080\s*Ti\b/i
-    },
+    // {
+    //   query: "rtx 2080 ti",
+    //   maxPrice: 2000,
+    //   superPriceThreshold: 1500,
+    //   baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+2080+ti&o=1",
+    //   regex: /RTX\s*2080\s*Ti\b/i
+    // },
     {
       query: "rtx a5000",
       maxPrice: 9000,

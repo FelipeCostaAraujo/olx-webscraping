@@ -5,32 +5,35 @@ import Scraper from './scraper/scraper';
 import './server';
 import NotificationService from './services/notification-service';
 import { generateDataset } from './ml/generateDataset';
+import { createLogger } from './utils/logger';
 
 const scraper = new Scraper(new NotificationService());
+const logApp = createLogger('App');
+const logCron = createLogger('Cron');
 
 async function main() {
   try {
     await connectToDatabase();
-    console.log("Conexão com o MongoDB estabelecida.");
+    logApp.info('Conexão com o MongoDB estabelecida.');
 
     await generateDataset();
-    console.log("Dataset gerado com sucesso.");
+    logApp.info('Dataset gerado com sucesso.');
 
-    scraper.checkAllSearches();
-    scraper.checkCarSearches();
+    await scraper.checkAllSearches();
+    await scraper.checkCarSearches();
 
     // Agenda as buscas para rodar a cada 2 horas
-    cron.schedule('0 */2 * * *', () => {
-      console.log("[Cron] Iniciando busca agendada...");
-      scraper.checkAllSearches();
+    cron.schedule('0 */2 * * *', async () => {
+      logCron.info('Iniciando busca agendada...');
+      await scraper.checkAllSearches();
     });
 
-    cron.schedule('0 */2 * * *', () => {
-      console.log("[Cron] Iniciando buscas de carros agendadas...");
-      scraper.checkCarSearches();
+    cron.schedule('0 */2 * * *', async () => {
+      logCron.info('Iniciando buscas de carros agendadas...');
+      await scraper.checkCarSearches();
     });
   } catch (error) {
-    console.error("Erro na inicialização:", error);
+    logApp.error('Erro na inicialização', { erro: error });
     process.exit(1);
   }
 }

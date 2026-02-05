@@ -1,4 +1,7 @@
 import * as cheerio from 'cheerio';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('Parser');
 
 /**
  * 🔹 **Parses the HTML to extract ads based on the search configuration.**
@@ -65,7 +68,7 @@ export function parseListings(html: string, search: any): any[] {
     }
   });
   
-  console.log(`[Parser] ${listings.length} anúncios extraídos para "${search.query}"`);
+  log.info('Anúncios extraídos', { query: search.query, anuncios: listings.length });
   return listings;
 }
 
@@ -125,6 +128,6 @@ export function parseCarAd(html: string, search: any): any[] {
     });
   });
 
-  console.log(`[ParserCar] ${listings.length} anúncios de carros extraídos para "${search.query}"`);
+  log.info('Anúncios de carros extraídos', { query: search.query, anuncios: listings.length });
   return listings;
 }
