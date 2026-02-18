@@ -27,20 +27,20 @@ export default {
       baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=nvidia+tesla&pdvme=9&pdvme=3&pdvme=2&pdvme=1&o=1",
       regex: /NVIDIA\s*TESLA\s*/i
     },
-     {
-      query: "rtx 3060 12gb",
-      maxPrice: 2500,               // hard cap
-      superPriceThreshold: 1000,    // aciona alerta forte
-      baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+3060+12gb&o=1",
-      regex: /RTX\s*3060\b.*12\s*GB/i
-    },
-    {
-      query: "rtx 2060 12gb",
-      maxPrice: 2200,
-      superPriceThreshold: 1000,
-      baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+2060+12gb&o=1",
-      regex: /RTX\s*2060\b.*12\s*GB/i
-    },
+    /*{
+     query: "rtx 3060 12gb",
+     maxPrice: 2500,               // hard cap
+     superPriceThreshold: 1000,    // aciona alerta forte
+     baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+3060+12gb&o=1",
+     regex: /RTX\s*3060\b.*12\s*GB/i
+   },
+   {
+     query: "rtx 2060 12gb",
+     maxPrice: 2200,
+     superPriceThreshold: 1000,
+     baseUrl: "https://www.olx.com.br/informatica/placas-de-video?q=rtx+2060+12gb&o=1",
+     regex: /RTX\s*2060\b.*12\s*GB/i
+   },*/
 
     //
     // 🟢 Teslas específicas (boas pra IA)
@@ -104,14 +104,14 @@ export default {
     // },
   ],
   carSearches: [
-    // {
-    //   query: "Audi A3",
-    //   maxPrice: 70000,
-    //   superPriceThreshold: 60000,
-    //   baseUrl: "https://www.olx.com.br/autos-e-pecas/carros-vans-e-utilitarios/estado-sp?pe=80000&q=audi%20a3&motp=10&o=1",
-    //   regex: /AUDI\s*a3\s*/i,
-    //   isCarSearch: true
-    // },
+    {
+      query: "Audi A3",
+      maxPrice: 70000,
+      superPriceThreshold: 60000,
+      baseUrl: "https://www.olx.com.br/autos-e-pecas/carros-vans-e-utilitarios/estado-sp?pe=80000&q=audi%20a3&motp=10&o=1",
+      regex: /AUDI\s*a3\s*/i,
+      isCarSearch: true
+    },
     // {
     //   query: "Audi S3",
     //   maxPrice: 170000,
