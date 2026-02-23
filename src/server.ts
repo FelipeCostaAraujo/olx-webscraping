@@ -3,6 +3,7 @@ import adsRouter from './routers/ads';
 import priceTrendRouter from './routers/priceTrend';
 import predictionsRouter from './routers/predictions';
 import notificationRouter from './routers/notifications';
+import configRouter from './routers/config';
 
 /**
  * 🔹 **Creates an Express app and sets up the API routes.**
@@ -15,8 +16,7 @@ app.use('/ads', adsRouter);
 app.use('/price-trend', priceTrendRouter);
 app.use('/predictions', predictionsRouter);
 app.use('/notifications', notificationRouter);
-
-
+app.use('/config', configRouter);
 
 app.listen(PORT, () => {
   console.log(`[API] Servidor rodando na porta ${PORT}`);

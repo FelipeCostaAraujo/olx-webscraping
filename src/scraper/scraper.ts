@@ -1,4 +1,4 @@
-import config from '../config';
+import { getConfig } from '../models/SearchConfig';
 import { fetchPage } from './fetcher';
 import { parseListings, parseCarAd } from './parser';
 import Ad from '../models/Ad';
@@ -43,6 +43,7 @@ type RunContext = {
     type: RunType;
     startedAt: Date;
     startedAtMs: number;
+    maxPages: number;
     counters: RunCounters;
     searches: Map<string, SearchCounters>;
 };
@@ -89,7 +90,7 @@ export default class Scraper {
         };
     }
 
-    private startRun(type: RunType, searchesTotal: number): RunContext {
+    private startRun(type: RunType, searchesTotal: number, maxPages: number): RunContext {
         const startedAt = new Date();
         const runId = `${type}-${startedAt.getTime().toString(36)}`;
         const run: RunContext = {
@@ -97,6 +98,7 @@ export default class Scraper {
             type,
             startedAt,
             startedAtMs: startedAt.getTime(),
+            maxPages,
             counters: this.createRunCounters(searchesTotal),
             searches: new Map(),
         };
@@ -106,7 +108,7 @@ export default class Scraper {
             tipo: type,
             inicio: startedAt.toISOString(),
             buscas: searchesTotal,
-            maxPaginas: config.maxPages,
+            maxPaginas: maxPages,
         });
         return run;
     }
@@ -243,15 +245,15 @@ export default class Scraper {
      * @param {Object} search - The search configuration.
      * @returns {Promise<void>}
      */
-    async checkListingsForSearch(search: any, run?: RunContext): Promise<void> {
+    async checkListingsForSearch(search: any, run: RunContext, isCarSearch: boolean): Promise<void> {
         const startedAtMs = Date.now();
-        const searchStats = run ? this.getSearchStats(run, search.query) : undefined;
-        log.info('Iniciando busca', { query: search.query, runId: run?.id });
-        for (let page = 1; page <= config.maxPages; page++) {
+        const searchStats = this.getSearchStats(run, search.query);
+        log.info('Iniciando busca', { query: search.query, runId: run.id });
+        for (let page = 1; page <= run.maxPages; page++) {
             const url = this.buildUrl(search, page);
             run && run.counters.pagesAttempted++;
             searchStats && searchStats.pagesAttempted++;
-            const html = await fetchPage(url, search.isCarSearch ?? false);
+            const html = await fetchPage(url, isCarSearch);
             if (!html) {
                 run && run.counters.errors++;
                 searchStats && searchStats.errors++;
@@ -267,7 +269,7 @@ export default class Scraper {
                 log.debug('HTML carregado', { pagina: page, query: search.query, tamanho: html.length });
             }
 
-            const listings = search.isCarSearch ? parseCarAd(html, search) : parseListings(html, search);
+            const listings = isCarSearch ? parseCarAd(html, search) : parseListings(html, search);
             run && (run.counters.listingsParsed += listings.length);
             searchStats && (searchStats.listingsParsed += listings.length);
             const superPriceFound = listings.filter((listing) => listing.superPrice).length;
@@ -284,7 +286,7 @@ export default class Scraper {
                     runId: run?.id,
                 });
                 for (const ad of listings) {
-                    const category = search.isCarSearch ? 'car' : 'hardware';
+                    const category = isCarSearch ? 'car' : 'hardware';
                     run && run.counters.adsProcessed++;
                     searchStats && searchStats.adsProcessed++;
                     await this.processAd(ad, category, run, searchStats);
@@ -317,10 +319,12 @@ export default class Scraper {
      * @returns {Promise<void>}
      */
     async checkAllSearches(): Promise<void> {
-        const run = this.startRun('hardware', config.searches.length);
+        const config = await getConfig();
+        const { maxPages, items } = config.gpuSearches;
+        const run = this.startRun('hardware', items.length, maxPages);
         try {
-            for (const search of config.searches) {
-                await this.checkListingsForSearch(search, run);
+            for (const search of items) {
+                await this.checkListingsForSearch(search, run, false);
             }
             this.finishRun(run, 'success');
         } catch (err) {
@@ -335,10 +339,12 @@ export default class Scraper {
      * @returns {Promise<void>}
      */
     async checkCarSearches(): Promise<void> {
-        const run = this.startRun('cars', config.carSearches.length);
+        const config = await getConfig();
+        const { maxPages, items } = config.carSearches;
+        const run = this.startRun('cars', items.length, maxPages);
         try {
-            for (const search of config.carSearches) {
-                await this.checkListingsForSearch(search, run);
+            for (const search of items) {
+                await this.checkListingsForSearch(search, run, true);
             }
             this.finishRun(run, 'success');
         } catch (err) {
