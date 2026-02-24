@@ -4,6 +4,9 @@ import { parseListings, parseCarAd } from './parser';
 import Ad from '../models/Ad';
 import { classifyAd } from '../nlp/classifier';
 import NotificationService from '../services/notification-service';
+import { explainDealOpportunity, isStrongDeal, type DealExplanation } from '../ml/deal-intelligence';
+import { buildPriceContext, extractFeaturesFromAd, type PriceContext } from '../ml/features';
+import { type PredictionResult, predictAdQualityDetailed } from '../ml/predictor';
 import { createLogger } from '../utils/logger';
 
 type RunType = 'hardware' | 'cars';
@@ -46,6 +49,13 @@ type RunContext = {
     maxPages: number;
     counters: RunCounters;
     searches: Map<string, SearchCounters>;
+};
+
+type DealEvaluation = {
+    priceContext: PriceContext;
+    features: number[];
+    prediction: PredictionResult;
+    explanation: DealExplanation;
 };
 
 const log = createLogger('Scraper');
@@ -149,6 +159,114 @@ export default class Scraper {
         return stats;
     }
 
+    private toNumber(value: unknown): number {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    private getMlNotifyMinScore(): number {
+        const raw = Number(process.env.ML_NOTIFY_MIN_SCORE);
+        if (!Number.isFinite(raw)) return 0.78;
+        return Math.min(0.99, Math.max(0, raw));
+    }
+
+    private applyDealEvaluation(target: any, dealEvaluation: DealEvaluation | null): void {
+        if (!dealEvaluation) return;
+        target.mlScore = dealEvaluation.prediction.score;
+        target.mlIsDeal = dealEvaluation.prediction.isDeal;
+        target.mlConfidence = dealEvaluation.prediction.confidence;
+        target.mlThreshold = dealEvaluation.prediction.threshold;
+        target.mlReasons = dealEvaluation.explanation.reasons;
+        target.mlScoredAt = new Date();
+    }
+
+    private shouldSendMlNotification(ad: any, dealEvaluation: DealEvaluation | null, previousPrice?: number): {
+        shouldNotify: boolean;
+        reason: string;
+    } {
+        if (!dealEvaluation) return { shouldNotify: false, reason: '' };
+        if (String(ad.category || '').toLowerCase() !== 'hardware') {
+            return { shouldNotify: false, reason: '' };
+        }
+
+        const minScore = this.getMlNotifyMinScore();
+        const discount = dealEvaluation.features[1] ?? 0;
+        const dropRatio = dealEvaluation.features[8] ?? 0;
+
+        const hasMeaningfulDiscount = discount >= 0.1;
+        const hasDropFromModel = dropRatio >= 0.03;
+        const hasDropFromPrevious =
+            previousPrice != null &&
+            Number.isFinite(previousPrice) &&
+            previousPrice > 0 &&
+            this.toNumber(ad.price) <= previousPrice * 0.97;
+
+        const hasDrop = hasDropFromModel || hasDropFromPrevious;
+        const strongDeal = isStrongDeal(dealEvaluation.prediction);
+        const scoreGate = dealEvaluation.prediction.score >= minScore;
+
+        if (!(strongDeal && scoreGate && (hasMeaningfulDiscount || hasDrop))) {
+            return { shouldNotify: false, reason: '' };
+        }
+
+        const reason = hasDrop
+            ? 'Score ML alto com queda de preço relevante'
+            : 'Score ML alto com preço abaixo da mediana da busca';
+
+        return { shouldNotify: true, reason };
+    }
+
+    private formatCurrency(value: number): string {
+        try {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        } catch {
+            return `R$ ${value.toFixed(2)}`;
+        }
+    }
+
+    private async evaluateDeal(ad: any): Promise<DealEvaluation | null> {
+        try {
+            const peers = await Ad.find(
+                {
+                    blacklisted: { $ne: true },
+                    searchQuery: ad.searchQuery,
+                    category: ad.category,
+                    price: { $gt: 0 },
+                },
+                { price: 1 }
+            ).lean();
+
+            const prices = peers
+                .map((peer: any) => this.toNumber(peer.price))
+                .filter((price) => price > 0);
+
+            const adPrice = this.toNumber(ad.price);
+            if (adPrice > 0) prices.push(adPrice);
+
+            const priceContext = buildPriceContext(prices);
+            const features = extractFeaturesFromAd(ad, {
+                priceContext,
+                now: new Date(),
+            });
+            const prediction = await predictAdQualityDetailed(features);
+            const explanation = explainDealOpportunity(ad, priceContext, features, prediction);
+
+            return {
+                priceContext,
+                features,
+                prediction,
+                explanation,
+            };
+        } catch (error) {
+            log.warn('Falha ao calcular score de ML para anúncio', {
+                titulo: ad?.title,
+                query: ad?.searchQuery,
+                erro: error instanceof Error ? error.message : error,
+            });
+            return null;
+        }
+    }
+
     /**
      * 🔹 **Saves an ad to the database if it does not already exist.
      * Ads that are blacklisted are not reinserted.
@@ -156,22 +274,51 @@ export default class Scraper {
      * @param {Object} ad - The ad object to save.
      * @returns {Promise<void>}
      */
-    async saveAd(ad: any, run?: RunContext, searchStats?: SearchCounters): Promise<void> {
+    async saveAd(ad: any, run?: RunContext, searchStats?: SearchCounters, dealEvaluation?: DealEvaluation | null): Promise<void> {
         try {
             const existing = await Ad.findOne({ title: ad.title, searchQuery: ad.searchQuery });
             if (existing) {
                 if (existing.price !== ad.price) {
+                    const previousPrice = this.toNumber(existing.price);
                     existing.priceHistory.push({ price: ad.price, date: new Date() });
                     existing.price = ad.price;
+                    existing.url = ad.url;
+                    existing.imageUrl = ad.imageUrl;
+                    existing.location = ad.location ?? existing.location;
+                    existing.publishedAt = ad.publishedAt ?? existing.publishedAt;
+                    if (ad.kilometers != null) {
+                        existing.kilometers = ad.kilometers;
+                    }
+                    existing.classification = ad.classification ?? existing.classification;
+                    this.applyDealEvaluation(existing, dealEvaluation ?? null);
                     await existing.save();
-                    const sortedHistory = [...existing.priceHistory].sort(
-                        (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()
-                    );
-                    const previousPrice = sortedHistory.length > 0 ? sortedHistory[sortedHistory.length - 1].price : existing.price;
                     run && run.counters.adsUpdated++;
                     searchStats && searchStats.adsUpdated++;
                     logDb.info('Atualizado preço do anúncio', { titulo: ad.title, runId: run?.id });
-                    if (ad.superPrice && ad.price < (previousPrice ?? 0) && existing.category === 'hardware') {
+
+                    let notificationSent = false;
+                    const mlDecision = this.shouldSendMlNotification(existing, dealEvaluation ?? null, previousPrice);
+                    if (mlDecision.shouldNotify) {
+                        this.notificationService.sendPriceDropNotification(
+                            {
+                                adId: existing._id.toString(),
+                                title: existing.title as string,
+                                price: existing.price as number,
+                                url: existing.url as string,
+                                imageUrl: existing.imageUrl,
+                                createdAt: existing.createdAt,
+                            },
+                            previousPrice,
+                            {
+                                title: 'Oportunidade ML: preço caiu',
+                                body: `${existing.title} caiu para ${this.formatCurrency(this.toNumber(existing.price))} (score ${dealEvaluation?.prediction.score.toFixed(2)})`,
+                                dealScore: dealEvaluation?.prediction.score,
+                                dealLabel: dealEvaluation?.explanation.label,
+                                reason: mlDecision.reason,
+                            }
+                        );
+                        notificationSent = true;
+                    } else if (ad.superPrice && this.toNumber(ad.price) < previousPrice && existing.category === 'hardware') {
                         this.notificationService.sendPriceDropNotification({
                             adId: existing._id.toString(),
                             title: existing.title as string,
@@ -179,7 +326,11 @@ export default class Scraper {
                             url: existing.url as string,
                             imageUrl: existing.imageUrl,
                             createdAt: existing.createdAt,
-                        }, previousPrice ?? 0);
+                        }, previousPrice);
+                        notificationSent = true;
+                    }
+
+                    if (notificationSent) {
                         run && run.counters.notificationsSent++;
                     }
                 } else {
@@ -190,8 +341,30 @@ export default class Scraper {
                 return;
             }
             ad.priceHistory = [{ price: ad.price, date: new Date() }];
+            this.applyDealEvaluation(ad, dealEvaluation ?? null);
             const newAd = await Ad.create(ad);
-            if (newAd.superPrice && newAd.category === 'hardware') {
+            let notificationSent = false;
+            const mlDecision = this.shouldSendMlNotification(newAd, dealEvaluation ?? null);
+            if (mlDecision.shouldNotify) {
+                this.notificationService.sendPushNotification(
+                    {
+                        adId: newAd._id.toString(),
+                        title: newAd.title as string,
+                        price: newAd.price as number,
+                        url: newAd.url as string,
+                        imageUrl: newAd.imageUrl,
+                        createdAt: newAd.createdAt,
+                    },
+                    {
+                        title: 'Nova oportunidade detectada por ML',
+                        body: `${newAd.title} por ${this.formatCurrency(this.toNumber(newAd.price))} (score ${dealEvaluation?.prediction.score.toFixed(2)})`,
+                        dealScore: dealEvaluation?.prediction.score,
+                        dealLabel: dealEvaluation?.explanation.label,
+                        reason: mlDecision.reason,
+                    }
+                );
+                notificationSent = true;
+            } else if (newAd.superPrice && newAd.category === 'hardware') {
                 this.notificationService.sendPushNotification({
                     adId: newAd._id.toString(),
                     title: newAd.title as string,
@@ -200,6 +373,9 @@ export default class Scraper {
                     imageUrl: newAd.imageUrl,
                     createdAt: newAd.createdAt,
                 });
+                notificationSent = true;
+            }
+            if (notificationSent) {
                 run && run.counters.notificationsSent++;
             }
             run && run.counters.adsSaved++;
@@ -236,7 +412,8 @@ export default class Scraper {
         const classification = classifyAd(ad.title);
         ad.classification = classification;
         ad.category = category;
-        await this.saveAd(ad, run, searchStats);
+        const dealEvaluation = await this.evaluateDeal(ad);
+        await this.saveAd(ad, run, searchStats, dealEvaluation);
     }
 
     /**

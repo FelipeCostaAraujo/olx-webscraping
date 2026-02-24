@@ -10,6 +10,9 @@ import mongoose from 'mongoose';
  * - url: URL do anúncio (obrigatório)
  * - createdAt: Data em que a notificação foi criada (default: agora)
  * - imageUrl: URL da imagem do anúncio (opcional)
+ * - dealScore: score de oportunidade usado no momento do disparo (opcional)
+ * - dealLabel: nível textual da oportunidade (opcional)
+ * - reason: motivo resumido do disparo (opcional)
  */
 const notificationSchema = new mongoose.Schema({
   adId: { type: String, required: true },
@@ -18,6 +21,9 @@ const notificationSchema = new mongoose.Schema({
   url: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   imageUrl: { type: String, required: false },
+  dealScore: { type: Number, required: false },
+  dealLabel: { type: String, required: false },
+  reason: { type: String, required: false },
 });
 
 const Notification = mongoose.model('Notification', notificationSchema);

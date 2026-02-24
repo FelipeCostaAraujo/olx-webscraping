@@ -161,6 +161,7 @@ Esse script extrai features, aplica o modelo e exibe:
 - threshold treinado
 - decisão (`isDeal`)
 - confiança da decisão
+- e faz fallback para anúncio mais recente se `AD_ID` não for informado
 
 ### Endpoint de Predição
 
@@ -169,12 +170,18 @@ Esse script extrai features, aplica o modelo e exibe:
 - `prediction.threshold`
 - `prediction.isDeal`
 - `prediction.confidence`
+- `explanation.label` (`alta`, `media`, `neutra`, `baixa`)
+- `explanation.reasons`, `explanation.highlights`, `explanation.cautions`
 - contexto de preço da busca/categoria
 
-Também é possível ordenar listagem por score ML:
+A listagem principal `/ads` já retorna metadados de deal quando o modelo está disponível (`deal`, `mlScore`, `mlIsDeal`).
+
+Parâmetros úteis:
 
 ```bash
 GET /ads?dealFirst=true
+GET /ads?dealOnly=true
+GET /ads?withDeal=false
 ```
 
 ## Contribuição

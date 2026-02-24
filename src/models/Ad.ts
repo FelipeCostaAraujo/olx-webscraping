@@ -25,6 +25,12 @@ import mongoose from 'mongoose';
  *    - date: Data em que o preço foi registrado
  * 
  * @property {String} category - Categoria do anúncio, ex: "hardware" ou "car".
+ * @property {Number} mlScore - Score de oportunidade calculado pelo modelo (0 a 1).
+ * @property {Boolean} mlIsDeal - Indica se o anúncio passou o threshold do modelo.
+ * @property {Number} mlConfidence - Confiança da decisão do modelo (0 a 1).
+ * @property {Number} mlThreshold - Threshold usado na decisão.
+ * @property {String[]} mlReasons - Motivos resumidos usados para explicar a pontuação.
+ * @property {Date} mlScoredAt - Data da última pontuação de ML.
  */
 const adSchema = new mongoose.Schema({
   title: String,
@@ -56,7 +62,13 @@ const adSchema = new mongoose.Schema({
   },
   priceTrend: { type: String, required: false },
   priceDifference: { type: Number, required: false },
-  kilometers: { type: Number, required: false }
+  kilometers: { type: Number, required: false },
+  mlScore: { type: Number, required: false },
+  mlIsDeal: { type: Boolean, required: false },
+  mlConfidence: { type: Number, required: false },
+  mlThreshold: { type: Number, required: false },
+  mlReasons: { type: [String], default: [] },
+  mlScoredAt: { type: Date, required: false },
 });
 
 const Ad = mongoose.model('Ad', adSchema);

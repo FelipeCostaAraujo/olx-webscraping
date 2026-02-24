@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Ad from '../models/Ad';
 import { buildPriceContext, extractFeaturesFromAd } from '../ml/features';
 import { predictAdQualityDetailed } from '../ml/predictor';
+import { explainDealOpportunity } from '../ml/deal-intelligence';
 import { createLogger } from '../utils/logger';
 
 const router = Router();
@@ -46,18 +47,21 @@ router.get('/ads/:id/prediction', async (req: any, res: any) => {
     });
 
     const prediction = await predictAdQualityDetailed(features);
+    const explanation = explainDealOpportunity(ad, priceContext, features, prediction);
 
     log.info('Predição calculada', {
       adId: String(ad._id),
       score: Number(prediction.score.toFixed(4)),
       isDeal: prediction.isDeal,
       contextoAmostras: priceContext.sampleSize,
+      label: explanation.label,
     });
 
     res.json({
       adId: ad._id,
       title: ad.title,
       prediction,
+      explanation,
       context: {
         searchQuery: ad.searchQuery,
         category: ad.category,

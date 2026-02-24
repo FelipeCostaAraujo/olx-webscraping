@@ -12,6 +12,16 @@ GET {{baseUrl}}/ads?dealFirst=true
 Content-Type: application/json
 
 ###
+# GET ONLY DEALS (ISDEAL=TRUE)
+GET {{baseUrl}}/ads?dealOnly=true
+Content-Type: application/json
+
+###
+# GET ADS WITHOUT ML SCORE ENRICHMENT
+GET {{baseUrl}}/ads?withDeal=false
+Content-Type: application/json
+
+###
 # DELETE AN AD (SUBSTITUA {{adId}} PELO ID REAL)
 DELETE {{baseUrl}}/ads/{{adId}}
 Content-Type: application/json

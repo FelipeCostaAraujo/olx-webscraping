@@ -1,7 +1,8 @@
 import { Router, Request, Response } from 'express';
 import Ad from '../models/Ad';
 import { buildPriceContext, extractFeaturesFromAd } from '../ml/features';
-import { predictAdQuality } from '../ml/predictor';
+import { explainDealOpportunity } from '../ml/deal-intelligence';
+import { predictAdQualityDetailed } from '../ml/predictor';
 import { createLogger } from '../utils/logger';
 
 const router = Router();
@@ -17,6 +18,8 @@ const log = createLogger('Ads API');
  *   - category: filter ads by category ("hardware" or "car"). If not provided, all categories are returned.
  *   - trend: if "downFirst" is passed, ads that have had a price drop (priceTrend === "down") are listed first.
  *   - dealFirst: if "true", scores ads with ML and sorts by best deal first.
+ *   - dealOnly: if "true", returns only ads marcados como oportunidade pelo modelo.
+ *   - withDeal: if "false", disables ML scoring on response.
  * 
  * Default ordering is by published first (createdAt descending).
  */
@@ -53,27 +56,37 @@ router.get('/', async (req: Request, res: Response) => {
       return adObj;
     });
 
+    const withDeal = req.query.withDeal !== 'false';
     let responseAds = adsWithPriceData;
 
-    if (req.query.dealFirst === 'true') {
+    if (withDeal) {
       try {
-        const adsWithMlScore = await scoreAdsByDeal(responseAds);
-        responseAds = adsWithMlScore.sort((a: any, b: any) => {
-          const scoreA = typeof a.mlScore === 'number' ? a.mlScore : -1;
-          const scoreB = typeof b.mlScore === 'number' ? b.mlScore : -1;
-          if (scoreA !== scoreB) return scoreB - scoreA;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        });
+        responseAds = await scoreAdsByDeal(responseAds);
       } catch (error) {
-        log.warn('Falha ao ordenar por score de ML, retornando ordenação padrão', {
+        log.warn('Falha ao calcular score de ML, retornando resposta sem deal metadata', {
           erro: error instanceof Error ? error.message : error,
         });
       }
     }
 
+    if (req.query.dealOnly === 'true') {
+      responseAds = responseAds.filter((ad: any) => ad.deal?.isDeal === true);
+    }
+
+    if (req.query.dealFirst === 'true') {
+      responseAds = responseAds.sort((a: any, b: any) => {
+        const scoreA = typeof a.deal?.score === 'number' ? a.deal.score : -1;
+        const scoreB = typeof b.deal?.score === 'number' ? b.deal.score : -1;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
+
     log.info('Anúncios retornados', {
       total: responseAds.length,
+      withDeal,
       dealFirst: req.query.dealFirst === 'true',
+      dealOnly: req.query.dealOnly === 'true',
     });
     res.json(responseAds);
   } catch (err) {
@@ -157,8 +170,27 @@ async function scoreAdsByDeal(ads: any[]): Promise<any[]> {
     ads.map(async (ad) => {
       const context = groupedContexts.get(dealGroupKey(ad)) || globalContext;
       const features = extractFeaturesFromAd(ad, { priceContext: context, now });
-      const mlScore = await predictAdQuality(features);
-      return { ...ad, mlScore };
+      const prediction = await predictAdQualityDetailed(features);
+      const explanation = explainDealOpportunity(ad, context, features, prediction);
+
+      return {
+        ...ad,
+        mlScore: prediction.score,
+        mlIsDeal: prediction.isDeal,
+        mlConfidence: prediction.confidence,
+        mlThreshold: prediction.threshold,
+        deal: {
+          score: prediction.score,
+          isDeal: prediction.isDeal,
+          confidence: prediction.confidence,
+          threshold: prediction.threshold,
+          label: explanation.label,
+          reasons: explanation.reasons,
+          highlights: explanation.highlights,
+          cautions: explanation.cautions,
+          metrics: explanation.metrics,
+        },
+      };
     })
   );
 
