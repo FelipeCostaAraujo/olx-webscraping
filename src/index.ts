@@ -5,6 +5,7 @@ import Scraper from './scraper/scraper';
 import './server';
 import NotificationService from './services/notification-service';
 import { generateDataset } from './ml/generateDataset';
+import { trainModel } from './ml/trainModel';
 import { createLogger } from './utils/logger';
 
 const scraper = new Scraper(new NotificationService());
@@ -16,8 +17,37 @@ async function main() {
     await connectToDatabase();
     logApp.info('Conexão com o MongoDB estabelecida.');
 
-    await generateDataset();
-    logApp.info('Dataset gerado com sucesso.');
+    if (process.env.ML_AUTO_DATASET === 'true') {
+      try {
+        const summary = await generateDataset();
+        logApp.info('Dataset de ML atualizado', {
+          linhas: summary.rows,
+          positivos: summary.positives,
+          negativos: summary.negatives,
+          threshold: Number(summary.threshold.toFixed(4)),
+        });
+      } catch (error) {
+        logApp.warn('Falha ao gerar dataset de ML no boot', {
+          erro: error instanceof Error ? error.message : error,
+        });
+      }
+    }
+
+    if (process.env.ML_AUTO_TRAIN === 'true') {
+      try {
+        const model = await trainModel();
+        logApp.info('Modelo de ML treinado no boot', {
+          datasetSize: model.metrics.datasetSize,
+          threshold: Number(model.threshold.toFixed(4)),
+          testAccuracy: Number(model.metrics.test.accuracy.toFixed(4)),
+          testF1: Number(model.metrics.test.f1.toFixed(4)),
+        });
+      } catch (error) {
+        logApp.warn('Falha ao treinar modelo de ML no boot', {
+          erro: error instanceof Error ? error.message : error,
+        });
+      }
+    }
 
     await scraper.checkAllSearches();
     await scraper.checkCarSearches();

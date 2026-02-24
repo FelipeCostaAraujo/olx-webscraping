@@ -7,6 +7,11 @@ GET {{baseUrl}}/ads
 Content-Type: application/json
 
 ###
+# GET ALL ADS RANKED BY ML DEAL SCORE
+GET {{baseUrl}}/ads?dealFirst=true
+Content-Type: application/json
+
+###
 # DELETE AN AD (SUBSTITUA {{adId}} PELO ID REAL)
 DELETE {{baseUrl}}/ads/{{adId}}
 Content-Type: application/json

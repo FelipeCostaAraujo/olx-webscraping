@@ -129,10 +129,13 @@ npm run start:pm2
 
 1. **Gerar o Dataset:**
 
-   O script `generateDataset.ts` extrai dados do MongoDB e gera um arquivo JSON com os exemplos:
+   O script `generateDataset.ts` extrai dados do MongoDB e gera um dataset com:
+   - features por anúncio (preço relativo, idade, condição, histórico, etc)
+   - target binário (`0`/`1`) para oportunidade de negócio
+   - metadados de distribuição e threshold
 
    ```bash
-   npx ts-node src/ml/generateDataset.ts
+   npm run ml:dataset
    ```
 
 2. **Treinar o Modelo:**
@@ -140,36 +143,39 @@ npm run start:pm2
    Com o dataset gerado, execute o script de treinamento:
 
    ```bash
-   npx ts-node src/ml/trainModel.ts
+   npm run ml:train
    ```
 
-   O modelo treinado será salvo na pasta `artifacts/model`.
+   O modelo treinado (regressão logística) será salvo em `artifacts/model/model.json`.
 
 ### Fazendo Predições
 
 Você pode usar o endpoint de predição ou criar um script (por exemplo, `testPrediction.ts`) para testar as predições:
 
 ```bash
-npx ts-node src/ml/testPrediction.ts
+AD_ID=<id-do-anuncio> npm run ml:test
 ```
 
-Esse script deverá extrair as features de um anúncio, fazer a predição com o modelo e exibir o score.
+Esse script extrai features, aplica o modelo e exibe:
+- score de oportunidade (`0` a `1`)
+- threshold treinado
+- decisão (`isDeal`)
+- confiança da decisão
 
 ### Endpoint de Predição
 
-Uma boa prática é criar um endpoint, por exemplo, `GET /predictions/ads/:id/prediction`, que:
-- Recebe o ID do anúncio.
-- Extrai as features usando `extractFeaturesFromAd`.
-- Chama `predictAdQuality(features)`.
-- Retorna o score para o cliente.
+`GET /predictions/ads/:id/prediction` retorna:
+- `prediction.score`
+- `prediction.threshold`
+- `prediction.isDeal`
+- `prediction.confidence`
+- contexto de preço da busca/categoria
 
-## O Que Fazer Com a Predição?
+Também é possível ordenar listagem por score ML:
 
-O valor retornado pelo modelo (por exemplo, `-0.063`) é um score que reflete a “qualidade” ou “valor” do anúncio com base nas features. Você pode:
-
-- **Definir Thresholds:** Destacar anúncios com score abaixo de um determinado valor (indicando um bom negócio).
-- **Ordenar Anúncios:** Filtrar e ordenar anúncios na interface do usuário conforme o score.
-- **Acionar Notificações:** Enviar notificações para usuários quando um anúncio com score abaixo de um limiar é detectado, indicando uma potencial oferta.
+```bash
+GET /ads?dealFirst=true
+```
 
 ## Contribuição
 

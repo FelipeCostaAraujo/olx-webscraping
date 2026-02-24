@@ -8,7 +8,11 @@
     "test": "NODE_ENV=test jest -i",
     "start": "ts-node-dev --transpile-only --ignore-watch node_modules --respawn src/index.ts",
     "dev": "nodemon src/index.ts",
-    "start:pm2": "pm2 start ./pm2.config.js"
+    "start:pm2": "pm2 start ./pm2.config.js",
+    "ml:dataset": "ts-node src/ml/generateDataset.ts",
+    "ml:train": "ts-node src/ml/trainModel.ts",
+    "ml:rebuild": "npm run ml:dataset && npm run ml:train",
+    "ml:test": "ts-node src/ml/testPrediction.ts"
   },
   "keywords": [],
   "license": "ISC",

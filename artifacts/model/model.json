@@ -1,1 +1,99 @@
-{"modelTopology":{"class_name":"Sequential","config":{"name":"sequential_1","layers":[{"class_name":"Dense","config":{"units":32,"activation":"relu","use_bias":true,"kernel_initializer":{"class_name":"VarianceScaling","config":{"scale":1,"mode":"fan_avg","distribution":"normal","seed":null}},"bias_initializer":{"class_name":"Zeros","config":{}},"kernel_regularizer":null,"bias_regularizer":null,"activity_regularizer":null,"kernel_constraint":null,"bias_constraint":null,"name":"dense_Dense1","trainable":true,"batch_input_shape":[null,3],"dtype":"float32"}},{"class_name":"Dense","config":{"units":16,"activation":"relu","use_bias":true,"kernel_initializer":{"class_name":"VarianceScaling","config":{"scale":1,"mode":"fan_avg","distribution":"normal","seed":null}},"bias_initializer":{"class_name":"Zeros","config":{}},"kernel_regularizer":null,"bias_regularizer":null,"activity_regularizer":null,"kernel_constraint":null,"bias_constraint":null,"name":"dense_Dense2","trainable":true}},{"class_name":"Dense","config":{"units":1,"activation":"linear","use_bias":true,"kernel_initializer":{"class_name":"VarianceScaling","config":{"scale":1,"mode":"fan_avg","distribution":"normal","seed":null}},"bias_initializer":{"class_name":"Zeros","config":{}},"kernel_regularizer":null,"bias_regularizer":null,"activity_regularizer":null,"kernel_constraint":null,"bias_constraint":null,"name":"dense_Dense3","trainable":true}}]},"keras_version":"tfjs-layers 4.22.0","backend":"tensor_flow.js"},"weightsManifest":[{"paths":["weights.bin"],"weights":[{"name":"dense_Dense1/kernel","shape":[3,32],"dtype":"float32"},{"name":"dense_Dense1/bias","shape":[32],"dtype":"float32"},{"name":"dense_Dense2/kernel","shape":[32,16],"dtype":"float32"},{"name":"dense_Dense2/bias","shape":[16],"dtype":"float32"},{"name":"dense_Dense3/kernel","shape":[16,1],"dtype":"float32"},{"name":"dense_Dense3/bias","shape":[1],"dtype":"float32"}]}],"format":"layers-model","generatedBy":"TensorFlow.js tfjs-layers v4.22.0","convertedBy":null}
+{
+  "version": 2,
+  "modelType": "logistic-regression",
+  "createdAt": "2026-02-24T01:06:28.152Z",
+  "featureCount": 12,
+  "featureNames": [
+    "priceToMedian",
+    "discountVsMedian",
+    "priceZScore",
+    "ageNormalized",
+    "conditionScore",
+    "sentimentScoreNormalized",
+    "superPriceFlag",
+    "hasRecentPriceDrop",
+    "dropRatio",
+    "lastDeltaRatio",
+    "isCar",
+    "kilometersNormalized"
+  ],
+  "weights": [
+    -0.3058408415846969,
+    0.696279789299299,
+    -0.8323958363911116,
+    -0.31964332851493127,
+    0,
+    0,
+    2.17298869739061,
+    -0.12692379243894003,
+    0.07426239168084113,
+    0.07426239168084113,
+    0.1758502783599386,
+    0.16012538034613186
+  ],
+  "bias": -1.0514671469571746,
+  "threshold": 0.2,
+  "normalization": {
+    "means": [
+      1.1443063356678407,
+      -0.06883463755463326,
+      0.08305565966527434,
+      0.030847703255675034,
+      0.5,
+      0,
+      0.3548387096774194,
+      0.16129032258064516,
+      0.03218579320252588,
+      0.03218579320252588,
+      0.3225806451612903,
+      0.39019006451612903
+    ],
+    "stdDevs": [
+      0.6719806876501326,
+      0.3743333619063448,
+      0.9174168155253873,
+      0.04066163133450997,
+      1,
+      1,
+      0.4784644185223007,
+      0.3677985242255284,
+      0.08227466307949774,
+      0.08227466307949774,
+      0.4674637660061109,
+      0.7232863214746861
+    ]
+  },
+  "metrics": {
+    "train": {
+      "loss": 0.04385723470433274,
+      "accuracy": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "positives": 11,
+      "negatives": 20
+    },
+    "test": {
+      "loss": 0.14402949273471982,
+      "accuracy": 0.875,
+      "precision": 0.5,
+      "recall": 1,
+      "f1": 0.6666666666666666,
+      "positives": 1,
+      "negatives": 7
+    },
+    "datasetSize": 39,
+    "trainSize": 31,
+    "testSize": 8,
+    "positiveRate": 0.3076923076923077
+  },
+  "training": {
+    "learningRate": 0.05,
+    "epochs": 450,
+    "l2": 0.0008,
+    "logEvery": 50
+  },
+  "source": {
+    "datasetPath": "/home/faraujo/projects/olx-webscraping/artifacts/data/dataset.json"
+  }
+}

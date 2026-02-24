@@ -72,6 +72,94 @@ export function parseListings(html: string, search: any): any[] {
   return listings;
 }
 
+function getFirstNonEmptyText($root: any, selectors: string[]): string {
+  for (const selector of selectors) {
+    const value = $root.find(selector).first().text().trim();
+    if (value) return value;
+  }
+  return "";
+}
+
+function parsePriceValue(priceText: string): number | null {
+  if (!priceText) return null;
+  const raw = priceText.replace(/[^\d.,]/g, '');
+  if (!raw) return null;
+
+  let normalized = raw;
+  if (normalized.includes(',')) {
+    normalized = normalized.replace(/\./g, '').replace(',', '.');
+  } else {
+    normalized = normalized.replace(/\./g, '');
+  }
+
+  const parsed = Number.parseFloat(normalized);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function normalizeOlxUrl(url: string): string {
+  if (!url) return "";
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('//')) return `https:${url}`;
+  return `https://www.olx.com.br${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+function getImageUrl($root: any): string {
+  const img = $root.find('img').first();
+  const src = img.attr('src') || img.attr('data-src');
+  if (src) return src;
+
+  const srcset = img.attr('srcset');
+  if (!srcset) return "";
+
+  const firstSrc = srcset
+    .split(',')
+    .map((entry: string) => entry.trim().split(' ')[0])
+    .find(Boolean);
+
+  return firstSrc || "";
+}
+
+function parseLocationAndPublished(rawText: string): { location: string; publishedAt: string } {
+  if (!rawText) return { location: "", publishedAt: "" };
+  const normalized = rawText.replace(/\s+/g, ' ').trim();
+  if (!normalized) return { location: "", publishedAt: "" };
+
+  const parts = normalized.split('•').map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return {
+      location: parts[0],
+      publishedAt: parts.slice(1).join(' • '),
+    };
+  }
+
+  return { location: normalized, publishedAt: "" };
+}
+
+function parseKilometersFromCard($root: any): number | undefined {
+  const ariaLabels = $root
+    .find('[aria-label]')
+    .toArray()
+    .map((el: any) => el?.attribs?.['aria-label'] || "")
+    .join(' ');
+
+  const textSource = `${$root.text()} ${ariaLabels}`.replace(/\s+/g, ' ');
+  const match = textSource.match(/(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*(mil)?\s*(?:km|quil[oô]metros?(?:\s+rodados?)?)/i);
+  if (!match) return undefined;
+
+  let value = Number.parseInt(match[1].replace(/[^\d]/g, ''), 10);
+  if (!Number.isFinite(value)) return undefined;
+  if (match[2]) value *= 1000;
+  return value;
+}
+
+function matchesSearch(search: any, title: string): boolean {
+  if (!title) return false;
+  const regex = search.regex instanceof RegExp ? search.regex : new RegExp(String(search.regex), 'i');
+  if (regex.global || regex.sticky) regex.lastIndex = 0;
+  return regex.test(title);
+}
+
 /**
  * 🔹 **Parses the HTML to extract car ads based on the search configuration.**
  * Uses selectors adapted to the car ads layout.
@@ -84,47 +172,72 @@ export function parseCarAd(html: string, search: any): any[] {
   const $ = cheerio.load(html);
   const listings: any[] = [];
 
-  $('section[data-ds-component="DS-AdCard"]').each((i, el) => {
-    const linkEl = $(el).find('a[data-ds-component="DS-NewAdCard-Link"]');
-    const url = linkEl.attr('href') || "";
-    const title = linkEl.find('h2').text().trim();
+  const seenKeys = new Set<string>();
+  const adcardLinks = $('a[data-testid="adcard-link"]');
+  const legacyCards = $('section[data-ds-component="DS-AdCard"]');
 
-    const priceText = $(el)
-      .find('div.olx-ad-card__details-price--vertical h3.olx-ad-card__price')
-      .text()
-      .trim();
-    let price = parseFloat(
-      priceText.replace(/[^\d,]/g, '').replace(',', '.')
-    );
+  log.debug('Estrutura de cards detectada', {
+    query: search.query,
+    linksAdCard: adcardLinks.length,
+    cardsLegado: legacyCards.length,
+  });
 
-    const location = $(el)
-      .find('div.olx-ad-card__location-date-container--vertical p')
-      .text()
-      .trim() || "";
+  adcardLinks.each((i, el) => {
+    const linkEl = $(el);
+    const card = linkEl.closest('section.olx-adcard, section[data-ds-component="DS-AdCard"], section[data-testid="adcard"], article[data-testid="adcard"]');
+    const genericContainer = linkEl.closest('article, section, li');
+    const cardRoot = card.length ? card : (genericContainer.length ? genericContainer : linkEl.parent());
 
-    let kmText = "";
-    const kmSpan = $(el).find('li.olx-ad-card__labels-item span[aria-label*="quilômetros rodados"]');
-    if (kmSpan.length > 0) {
-      kmText = kmSpan.attr('aria-label') || "";
-    }
+    const rawUrl = linkEl.attr('href') || "";
+    const url = normalizeOlxUrl(rawUrl);
+    const title = (
+      linkEl.attr('title') ||
+      linkEl.find('h2, h3').first().text().trim() ||
+      getFirstNonEmptyText(cardRoot, ['h2', 'h3', '[data-testid="adcard-title"]'])
+    ).trim();
 
-    const kilometers = parseInt(kmText.replace(/[^0-9]/g, ''), 10);
+    if (!matchesSearch(search, title)) return;
 
-    if (!search.regex.test(title)) return;
-    if (price > search.maxPrice) return;
+    const priceText = getFirstNonEmptyText(cardRoot, [
+      'h3.olx-adcard__price',
+      '[data-testid="adcard-price"]',
+      '[data-testid="ad-price"]',
+      '[class*="price"] h2',
+      '[class*="price"] h3',
+      '[class*="price"] span',
+      'span:contains("R$")',
+      'p:contains("R$")',
+    ]);
 
-    const isSuperPrice = price <= search.superPriceThreshold;
+    const price = parsePriceValue(priceText);
+    if (price == null || price > search.maxPrice) return;
+
+    const locationText = getFirstNonEmptyText(cardRoot, [
+      '.olx-adcard__location-date',
+      '[data-testid="adcard-location-date"]',
+      '[data-testid="adcard-location"]',
+      '[class*="location-date"]',
+    ]);
+
+    const { location, publishedAt } = parseLocationAndPublished(locationText);
+    const kilometers = parseKilometersFromCard(cardRoot);
+    const imageUrl = getImageUrl(cardRoot);
+    const superPrice = price <= search.superPriceThreshold;
+
+    const dedupeKey = `${title}::${url}`;
+    if (seenKeys.has(dedupeKey)) return;
+    seenKeys.add(dedupeKey);
 
     listings.push({
       title,
       price,
       url,
-      imageUrl: $(el).find('div.olx-image-carousel picture img').attr('src') || "",
+      imageUrl,
       searchQuery: search.query,
-      superPrice: isSuperPrice,
+      superPrice,
       location,
       kilometers,
-      publishedAt: ""
+      publishedAt
     });
   });
 

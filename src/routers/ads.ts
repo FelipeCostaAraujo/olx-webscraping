@@ -1,7 +1,11 @@
 import { Router, Request, Response } from 'express';
 import Ad from '../models/Ad';
+import { buildPriceContext, extractFeaturesFromAd } from '../ml/features';
+import { predictAdQuality } from '../ml/predictor';
+import { createLogger } from '../utils/logger';
 
 const router = Router();
+const log = createLogger('Ads API');
 
 /**
  * 🔹 **GET /ads - Lists all ads that are not blacklisted, sorted based on query parameters.
@@ -12,6 +16,7 @@ const router = Router();
  *   - published: "first" to sort by createdAt descending (most recent first) or "last" for ascending (oldest first).
  *   - category: filter ads by category ("hardware" or "car"). If not provided, all categories are returned.
  *   - trend: if "downFirst" is passed, ads that have had a price drop (priceTrend === "down") are listed first.
+ *   - dealFirst: if "true", scores ads with ML and sorts by best deal first.
  * 
  * Default ordering is by published first (createdAt descending).
  */
@@ -48,8 +53,29 @@ router.get('/', async (req: Request, res: Response) => {
       return adObj;
     });
 
-    console.log(`[API] Retornando ${adsWithPriceData.length} anúncios.`);
-    res.json(adsWithPriceData);
+    let responseAds = adsWithPriceData;
+
+    if (req.query.dealFirst === 'true') {
+      try {
+        const adsWithMlScore = await scoreAdsByDeal(responseAds);
+        responseAds = adsWithMlScore.sort((a: any, b: any) => {
+          const scoreA = typeof a.mlScore === 'number' ? a.mlScore : -1;
+          const scoreB = typeof b.mlScore === 'number' ? b.mlScore : -1;
+          if (scoreA !== scoreB) return scoreB - scoreA;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      } catch (error) {
+        log.warn('Falha ao ordenar por score de ML, retornando ordenação padrão', {
+          erro: error instanceof Error ? error.message : error,
+        });
+      }
+    }
+
+    log.info('Anúncios retornados', {
+      total: responseAds.length,
+      dealFirst: req.query.dealFirst === 'true',
+    });
+    res.json(responseAds);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar anúncios.' });
   }
@@ -93,6 +119,50 @@ function calculatePriceData(ad: any): { trend: string, diff: number } {
     trend = "stable";
   }
   return { trend, diff };
+}
+
+function toNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function dealGroupKey(ad: any): string {
+  const category = String(ad?.category || 'unknown').toLowerCase();
+  const searchQuery = String(ad?.searchQuery || 'unknown').toLowerCase().trim();
+  return `${category}::${searchQuery}`;
+}
+
+async function scoreAdsByDeal(ads: any[]): Promise<any[]> {
+  const groupedPrices = new Map<string, number[]>();
+  const allPrices: number[] = [];
+
+  for (const ad of ads) {
+    const price = toNumber(ad?.price);
+    if (price <= 0) continue;
+    allPrices.push(price);
+    const key = dealGroupKey(ad);
+    const list = groupedPrices.get(key) || [];
+    list.push(price);
+    groupedPrices.set(key, list);
+  }
+
+  const globalContext = buildPriceContext(allPrices);
+  const groupedContexts = new Map<string, ReturnType<typeof buildPriceContext>>();
+  for (const [key, prices] of groupedPrices.entries()) {
+    groupedContexts.set(key, buildPriceContext(prices));
+  }
+
+  const now = new Date();
+  const scoredAds = await Promise.all(
+    ads.map(async (ad) => {
+      const context = groupedContexts.get(dealGroupKey(ad)) || globalContext;
+      const features = extractFeaturesFromAd(ad, { priceContext: context, now });
+      const mlScore = await predictAdQuality(features);
+      return { ...ad, mlScore };
+    })
+  );
+
+  return scoredAds;
 }
 
 

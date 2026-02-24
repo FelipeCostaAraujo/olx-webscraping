@@ -1,106 +1,887 @@
-[
-  {
-    "features": [
-      1450,
-      3.9802931828703705,
-      0
-    ],
-    "target": 0.8
+{
+  "version": 2,
+  "generatedAt": "2026-02-24T01:06:17.927Z",
+  "featureNames": [
+    "priceToMedian",
+    "discountVsMedian",
+    "priceZScore",
+    "ageNormalized",
+    "conditionScore",
+    "sentimentScoreNormalized",
+    "superPriceFlag",
+    "hasRecentPriceDrop",
+    "dropRatio",
+    "lastDeltaRatio",
+    "isCar",
+    "kilometersNormalized"
+  ],
+  "targetDefinition": "Top 30% dos anúncios ranqueados por score heurístico de oportunidade.",
+  "threshold": 0.2562210052020202,
+  "stats": {
+    "rows": 39,
+    "positives": 12,
+    "negatives": 27,
+    "positiveRate": 0.3076923076923077,
+    "minGroupSample": 4
   },
-  {
-    "features": [
-      3000,
-      3.9802925347222224,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      1700,
-      3.9802924421296297,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      3450,
-      3.976470150462963,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      600,
-      3.9764700578703702,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      600,
-      3.976469988425926,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      700,
-      3.9764693171296295,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      600,
-      3.974512627314815,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      600,
-      3.9745125462962965,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      600,
-      3.9745125,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      1390,
-      3.276829537037037,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      890,
-      3.276829375,
-      0
-    ],
-    "target": 0.8
-  },
-  {
-    "features": [
-      890,
-      3.275048865740741,
-      0
-    ],
-    "target": 0.8
-  }
-]
+  "rows": [
+    {
+      "adId": "699ced09cb16f4093049d0a6",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 600,
+      "features": [
+        0.46153846153846156,
+        0.5384615384615384,
+        -0.9868522743324077,
+        0.0008231957304526749,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.491164913572333,
+      "target": 1
+    },
+    {
+      "adId": "699ced09cb16f4093049d0d6",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 699,
+      "features": [
+        0.5376923076923077,
+        0.4623076923076923,
+        -0.8472831669625387,
+        0.0008231226851851852,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.4530879963390313,
+      "target": 1
+    },
+    {
+      "adId": "699cec4486cafde8864b7fe9",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 40000,
+      "features": [
+        0.7272727272727273,
+        0.2727272727272727,
+        -1.4250132169817282,
+        0.0008738240740740741,
+        0.5,
+        0,
+        1,
+        1,
+        0.27140255009107467,
+        0.27140255009107467,
+        1,
+        0.383892
+      ],
+      "heuristicScore": 0.42722220344317485,
+      "target": 1
+    },
+    {
+      "adId": "699ced09cb16f4093049d0b8",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 800,
+      "features": [
+        0.6153846153846154,
+        0.38461538461538464,
+        -0.7048944816660055,
+        0.0008231682098765432,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.4142418388509022,
+      "target": 1
+    },
+    {
+      "adId": "6997a86efddd0342acf99821",
+      "searchQuery": "nvidia tesla",
+      "category": "hardware",
+      "price": 560,
+      "features": [
+        0.7044025157232704,
+        0.29559748427672955,
+        -0.23138489286410102,
+        0.08962033513374484,
+        0.5,
+        0,
+        1,
+        1,
+        0.06666666666666667,
+        0.06666666666666667,
+        0,
+        0
+      ],
+      "heuristicScore": 0.40662911532766516,
+      "target": 1
+    },
+    {
+      "adId": "699cec4486cafde8864b7fcd",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 43900,
+      "features": [
+        0.7981818181818182,
+        0.2018181818181818,
+        -1.054509780566479,
+        0.0008738364197530864,
+        0.5,
+        0,
+        1,
+        1,
+        0.32461538461538464,
+        0.32461538461538464,
+        1,
+        2
+      ],
+      "heuristicScore": 0.3703161070724337,
+      "target": 1
+    },
+    {
+      "adId": "699cec4486cafde8864b8038",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 40000,
+      "features": [
+        0.7272727272727273,
+        0.2727272727272727,
+        -1.4250132169817282,
+        0.0008737754629629629,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        2
+      ],
+      "heuristicScore": 0.3462937343265993,
+      "target": 1
+    },
+    {
+      "adId": "6997a86efddd0342acf9981b",
+      "searchQuery": "nvidia tesla",
+      "category": "hardware",
+      "price": 600,
+      "features": [
+        0.7547169811320755,
+        0.24528301886792453,
+        -0.1920002302489349,
+        0.08962033693415639,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.3374718824792297,
+      "target": 1
+    },
+    {
+      "adId": "699ced09cb16f4093049d0b2",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 1000,
+      "features": [
+        0.7692307692307693,
+        0.23076923076923078,
+        -0.42293668899960335,
+        0.0008231702674897119,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.33731876176321623,
+      "target": 1
+    },
+    {
+      "adId": "699cec4486cafde8864b8020",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 47000,
+      "features": [
+        0.8545454545454545,
+        0.14545454545454545,
+        -0.7600070490569217,
+        0.0008737939814814815,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0.464
+      ],
+      "heuristicScore": 0.3040973692087542,
+      "target": 1
+    },
+    {
+      "adId": "699cec4486cafde8864b7fe5",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 52000,
+      "features": [
+        0.9454545454545454,
+        0.05454545454545454,
+        -0.2850026433963456,
+        0.0008738258744855967,
+        0.5,
+        0,
+        1,
+        1,
+        0.13333333333333333,
+        0.13333333333333333,
+        1,
+        2
+      ],
+      "heuristicScore": 0.2852028212027684,
+      "target": 1
+    },
+    {
+      "adId": "699cec4486cafde8864b8018",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 52900,
+      "features": [
+        0.9618181818181818,
+        0.038181818181818185,
+        -0.19950185037744195,
+        0.0008737986111111111,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0.32
+      ],
+      "heuristicScore": 0.2562210052020202,
+      "target": 1
+    },
+    {
+      "adId": "6997a917fddd0342acf9982f",
+      "searchQuery": "nvidia tesla p4",
+      "category": "hardware",
+      "price": 560,
+      "features": [
+        0.9333333333333333,
+        0.06666666666666667,
+        -0.3022097236834602,
+        0.0895768364197531,
+        0.5,
+        0,
+        0,
+        1,
+        0.06666666666666667,
+        0.06666666666666667,
+        0,
+        0
+      ],
+      "heuristicScore": 0.25216718641975305,
+      "target": 0
+    },
+    {
+      "adId": "699cec4486cafde8864b8014",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 55000,
+      "features": [
+        1,
+        0,
+        0,
+        0.0008738004115226338,
+        0.5,
+        0,
+        0,
+        1,
+        0.20174165457184326,
+        0.20174165457184326,
+        1,
+        0.32
+      ],
+      "heuristicScore": 0.2492345952413888,
+      "target": 0
+    },
+    {
+      "adId": "6997a723fddd0342acf99809",
+      "searchQuery": "rtx 4000",
+      "category": "hardware",
+      "price": 1450,
+      "features": [
+        0.8529411764705882,
+        0.14705882352941177,
+        -0.009471360614552796,
+        0.08970529552469136,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.24835298812273057,
+      "target": 0
+    },
+    {
+      "adId": "6997a86efddd0342acf99827",
+      "searchQuery": "nvidia tesla",
+      "category": "hardware",
+      "price": 700,
+      "features": [
+        0.8805031446540881,
+        0.11949685534591195,
+        -0.09353857371101956,
+        0.08962032021604939,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.23457880205567205,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0ae",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 1200,
+      "features": [
+        0.9230769230769231,
+        0.07692307692307693,
+        -0.14097889633320113,
+        0.0008231715534979424,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.22039568473725862,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0dc",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 1300,
+      "features": [
+        1,
+        0,
+        0,
+        0.0008231208847736625,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.18193415032921811,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0be",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 1300,
+      "features": [
+        1,
+        0,
+        0,
+        0.0008231579218106996,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.18193414736625516,
+      "target": 0
+    },
+    {
+      "adId": "6997a917fddd0342acf99833",
+      "searchQuery": "nvidia tesla p4",
+      "category": "hardware",
+      "price": 600,
+      "features": [
+        1,
+        0,
+        0,
+        0.0895768353909465,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.1748338531687243,
+      "target": 0
+    },
+    {
+      "adId": "6997a917fddd0342acf9982b",
+      "searchQuery": "nvidia tesla p4",
+      "category": "hardware",
+      "price": 600,
+      "features": [
+        1,
+        0,
+        0,
+        0.08957683822016461,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.17483385294238685,
+      "target": 0
+    },
+    {
+      "adId": "6997a723fddd0342acf99813",
+      "searchQuery": "rtx 4000",
+      "category": "hardware",
+      "price": 1700,
+      "features": [
+        1,
+        0,
+        0,
+        0.08970527880658437,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.17482357769547324,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0c2",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 1400,
+      "features": [
+        1.0769230769230769,
+        -0.07692307692307693,
+        0.14097889633320113,
+        0.0008231538065843622,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.1434726092339348,
+      "target": 0
+    },
+    {
+      "adId": "699cec4486cafde8864b7fd5",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 62500,
+      "features": [
+        1.1363636363636365,
+        -0.13636363636363635,
+        0.7125066084908641,
+        0.0008738317901234568,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0.376
+      ],
+      "heuristicScore": 0.12670827527497194,
+      "target": 0
+    },
+    {
+      "adId": "6998948ffddd0342acf998f9",
+      "searchQuery": "nvidia tesla",
+      "category": "hardware",
+      "price": 890,
+      "features": [
+        1.119496855345912,
+        -0.11949685534591195,
+        0.09353857371101956,
+        0.07407276594650206,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.11632575105132385,
+      "target": 0
+    },
+    {
+      "adId": "699cec4486cafde8864b8024",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 61000,
+      "features": [
+        1.1090909090909091,
+        -0.10909090909090909,
+        0.5700052867926912,
+        0.0008737842078189301,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2
+      ],
+      "heuristicScore": 0.11538464271791996,
+      "target": 0
+    },
+    {
+      "adId": "699cec4486cafde8864b7fe1",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 62999,
+      "features": [
+        1.1454363636363636,
+        -0.14543636363636364,
+        0.7599120481757896,
+        0.0008738271604938272,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0.608
+      ],
+      "heuristicScore": 0.11289191200897868,
+      "target": 0
+    },
+    {
+      "adId": "699cec4486cafde8864b7fd1",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 70000,
+      "features": [
+        1.2727272727272727,
+        -0.2727272727272727,
+        1.4250132169817282,
+        0.0008738333333333334,
+        0.5,
+        0,
+        1,
+        0,
+        0,
+        -0.627906976744186,
+        1,
+        0.394592
+      ],
+      "heuristicScore": 0.09778277696969696,
+      "target": 0
+    },
+    {
+      "adId": "699cec4486cafde8864b800b",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 68900,
+      "features": [
+        1.2527272727272727,
+        -0.25272727272727274,
+        1.3205122477364015,
+        0.0008738063271604939,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        2
+      ],
+      "heuristicScore": 0.04356645913019079,
+      "target": 0
+    },
+    {
+      "adId": "699cec4486cafde8864b7ffc",
+      "searchQuery": "Audi A3",
+      "category": "car",
+      "price": 70000,
+      "features": [
+        1.2727272727272727,
+        -0.2727272727272727,
+        1.4250132169817282,
+        0.0008738189300411522,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        -0.03734439834024896,
+        1,
+        2
+      ],
+      "heuristicScore": 0.03356645812196035,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0ce",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 1699,
+      "features": [
+        1.3069230769230769,
+        -0.3069230769230769,
+        0.5625057963694724,
+        0.000823125,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": 0.028472611538461538,
+      "target": 0
+    },
+    {
+      "adId": "69989528fddd0342acf99903",
+      "searchQuery": "nvidia tesla p4",
+      "category": "hardware",
+      "price": 890,
+      "features": [
+        1.4833333333333334,
+        -0.48333333333333334,
+        2.191020496705087,
+        0.07403319907407407,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": -0.0655893225925926,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0c6",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 2000,
+      "features": [
+        1.5384615384615385,
+        -0.5384615384615384,
+        0.9868522743324077,
+        0.0008231301440329218,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": -0.08729661964229185,
+      "target": 0
+    },
+    {
+      "adId": "6998948efddd0342acf998f5",
+      "searchQuery": "nvidia tesla",
+      "category": "hardware",
+      "price": 1390,
+      "features": [
+        1.748427672955975,
+        -0.7484276729559748,
+        0.5858468564005962,
+        0.0740727695473251,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": -0.19813965804177336,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0ca",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 2299,
+      "features": [
+        1.7684615384615385,
+        -0.7684615384615384,
+        1.408379174368679,
+        0.0008231260288065844,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": -0.2022966193130737,
+      "target": 0
+    },
+    {
+      "adId": "6997a723fddd0342acf9980d",
+      "searchQuery": "rtx 4000",
+      "category": "hardware",
+      "price": 3000,
+      "features": [
+        1.7647058823529411,
+        -0.7647058823529411,
+        0.04925107519567454,
+        0.08970528086419753,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": -0.20752936364560637,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0d2",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 2499,
+      "features": [
+        1.9223076923076923,
+        -0.9223076923076923,
+        1.6903369670350814,
+        0.0008231239711934157,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": -0.2792196960715416,
+      "target": 0
+    },
+    {
+      "adId": "699ced09cb16f4093049d0a2",
+      "searchQuery": "nvidia quadro",
+      "category": "hardware",
+      "price": 3000,
+      "features": [
+        2.3076923076923075,
+        -1,
+        2.396641237664419,
+        0.0008231990740740741,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": -0.31806585592592596,
+      "target": 0
+    },
+    {
+      "adId": "6997a86efddd0342acf99817",
+      "searchQuery": "nvidia tesla",
+      "category": "hardware",
+      "price": 3450,
+      "features": [
+        4.339622641509434,
+        -1,
+        2.614156981081652,
+        0.08962033899176955,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "heuristicScore": -0.3251696271193416,
+      "target": 0
+    }
+  ]
+}
