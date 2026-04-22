@@ -11,6 +11,7 @@ import {
   buildPriceContext,
   computeDealHeuristic,
   extractFeaturesFromAd,
+  hasCriticalRisk,
 } from './features';
 
 const log = createLogger('ML Dataset');
@@ -84,21 +85,38 @@ function assignTargetsByRank(rows: Array<Omit<DatasetRow, 'target'>>): {
   threshold: number;
 } {
   if (rows.length <= 1) {
-    const single = rows.map((row) => ({ ...row, target: 1 as 0 | 1 }));
+    const single = rows.map((row) => ({
+      ...row,
+      target: (hasCriticalRisk(row.features) ? 0 : 1) as 0 | 1,
+    }));
     return {
       rows: single,
       threshold: single[0]?.heuristicScore ?? 0,
     };
   }
 
-  const ranked = [...rows].sort((a, b) => b.heuristicScore - a.heuristicScore);
-  const positivesTarget = Math.max(1, Math.min(ranked.length - 1, Math.round(ranked.length * 0.3)));
-  const threshold = ranked[positivesTarget - 1].heuristicScore;
+  const lowRisk = rows.filter((row) => !hasCriticalRisk(row.features));
+  const highRisk = rows.filter((row) => hasCriticalRisk(row.features));
+  const rankedLowRisk = [...lowRisk].sort((a, b) => b.heuristicScore - a.heuristicScore);
 
-  const withTargets = ranked.map((row, index) => ({
+  if (rankedLowRisk.length <= 1) {
+    const allNegative = [...rows].map((row) => ({ ...row, target: 0 as 0 | 1 }));
+    return {
+      rows: allNegative,
+      threshold: rankedLowRisk[0]?.heuristicScore ?? rows[0]?.heuristicScore ?? 0,
+    };
+  }
+
+  const positivesTarget = Math.max(1, Math.min(rankedLowRisk.length - 1, Math.round(rankedLowRisk.length * 0.3)));
+  const threshold = rankedLowRisk[positivesTarget - 1].heuristicScore;
+
+  const lowRiskWithTargets = rankedLowRisk.map((row, index) => ({
     ...row,
     target: (index < positivesTarget ? 1 : 0) as 0 | 1,
   }));
+
+  const highRiskForcedNegative = highRisk.map((row) => ({ ...row, target: 0 as 0 | 1 }));
+  const withTargets = [...lowRiskWithTargets, ...highRiskForcedNegative];
 
   return { rows: withTargets, threshold };
 }
@@ -153,10 +171,11 @@ export async function generateDataset(): Promise<DatasetSummary> {
   const positiveRate = rows.length > 0 ? positives / rows.length : 0;
 
   const dataset: DatasetFile = {
-    version: 2,
+    version: 3,
     generatedAt: new Date().toISOString(),
     featureNames: FEATURE_NAMES,
-    targetDefinition: 'Top 30% dos anúncios ranqueados por score heurístico de oportunidade.',
+    targetDefinition:
+      'Top 30% dos anúncios de baixo risco ranqueados por score heurístico. Anúncios com risco crítico (defeito/leilão) são forçados para target 0.',
     threshold,
     stats: {
       rows: rows.length,

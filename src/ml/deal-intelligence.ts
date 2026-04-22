@@ -10,6 +10,9 @@ const FEATURE_INDEX = {
   dropRatio: 8,
   isCar: 10,
   kilometersNormalized: 11,
+  defectRiskFlag: 12,
+  severeDefectFlag: 13,
+  auctionOrLegalRiskFlag: 14,
 } as const;
 
 export type DealLabel = 'alta' | 'media' | 'neutra' | 'baixa';
@@ -36,6 +39,7 @@ function toPercent(value: number): number {
 }
 
 function inferLabel(prediction: PredictionResult): DealLabel {
+  if (prediction.riskAdjusted) return 'baixa';
   const highCut = Math.max(prediction.threshold + 0.2, 0.82);
   const mediumCut = Math.max(prediction.threshold + 0.08, 0.65);
   const neutralCut = Math.max(prediction.threshold - 0.05, 0.45);
@@ -64,6 +68,9 @@ export function explainDealOpportunity(
   const dropRatio = features[FEATURE_INDEX.dropRatio] ?? 0;
   const isCar = features[FEATURE_INDEX.isCar] ?? 0;
   const kmNormalized = features[FEATURE_INDEX.kilometersNormalized] ?? 0;
+  const defectRisk = features[FEATURE_INDEX.defectRiskFlag] ?? 0;
+  const severeDefect = features[FEATURE_INDEX.severeDefectFlag] ?? 0;
+  const legalRisk = features[FEATURE_INDEX.auctionOrLegalRiskFlag] ?? 0;
 
   const highlights: string[] = [];
   const cautions: string[] = [];
@@ -104,8 +111,22 @@ export function explainDealOpportunity(
     }
   }
 
+  if (severeDefect >= 1) {
+    cautions.push('Risco crítico: anúncio indica falha grave de funcionamento');
+  } else if (defectRisk >= 1) {
+    cautions.push('Risco crítico: anúncio indica defeito');
+  }
+
+  if (legalRisk >= 1) {
+    cautions.push('Risco crítico: anúncio menciona leilão/sinistro');
+  }
+
   if (priceContext.sampleSize < 4) {
     cautions.push('Amostra pequena para comparação de preço');
+  }
+
+  if (prediction.riskAdjusted && prediction.riskReason) {
+    cautions.push(prediction.riskReason);
   }
 
   const reasons = [...highlights.slice(0, 3), ...cautions.slice(0, 2)];

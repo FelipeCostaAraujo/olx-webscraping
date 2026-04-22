@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { FEATURE_INDEX, FEATURE_NAMES, hasCriticalRisk } from './features';
 
 const MODEL_PATH = path.resolve(__dirname, '../../artifacts/model/model.json');
 
@@ -19,12 +20,21 @@ interface TrainedDealModel {
   normalization: NormalizationStats;
 }
 
+type RiskAdjustment = {
+  score: number;
+  adjusted: boolean;
+  reason?: string;
+};
+
 export interface PredictionResult {
   score: number;
+  rawScore: number;
   threshold: number;
   isDeal: boolean;
   confidence: number;
   modelVersion: number;
+  riskAdjusted: boolean;
+  riskReason?: string;
 }
 
 let cachedModel: TrainedDealModel | null = null;
@@ -59,6 +69,69 @@ function normalizeFeatures(features: number[], normalization: NormalizationStats
   });
 }
 
+function alignFeaturesToModel(features: number[], model: TrainedDealModel): number[] {
+  if (features.length === model.featureCount) return features;
+
+  const sourceByName = new Map<string, number>();
+  for (let i = 0; i < FEATURE_NAMES.length; i++) {
+    sourceByName.set(FEATURE_NAMES[i], features[i] ?? 0);
+  }
+
+  if (Array.isArray(model.featureNames) && model.featureNames.length === model.featureCount) {
+    return model.featureNames.map((featureName, index) => {
+      if (sourceByName.has(featureName)) return sourceByName.get(featureName) as number;
+      return features[index] ?? 0;
+    });
+  }
+
+  if (features.length > model.featureCount) return features.slice(0, model.featureCount);
+
+  return [
+    ...features,
+    ...new Array<number>(model.featureCount - features.length).fill(0),
+  ];
+}
+
+function applyRiskAdjustment(rawScore: number, originalFeatures: number[]): RiskAdjustment {
+  const defectRisk = originalFeatures[FEATURE_INDEX.defectRiskFlag] ?? 0;
+  const severeDefect = originalFeatures[FEATURE_INDEX.severeDefectFlag] ?? 0;
+  const legalRisk = originalFeatures[FEATURE_INDEX.auctionOrLegalRiskFlag] ?? 0;
+
+  if (severeDefect >= 1) {
+    return {
+      score: Math.min(rawScore * 0.08, 0.08),
+      adjusted: true,
+      reason: 'Risco crítico: anúncio com indicação forte de defeito/sem funcionamento.',
+    };
+  }
+
+  if (defectRisk >= 1 && legalRisk >= 1) {
+    return {
+      score: Math.min(rawScore * 0.1, 0.12),
+      adjusted: true,
+      reason: 'Risco crítico: anúncio com defeito e menção a risco legal/leilão.',
+    };
+  }
+
+  if (defectRisk >= 1) {
+    return {
+      score: Math.min(rawScore * 0.14, 0.16),
+      adjusted: true,
+      reason: 'Risco crítico: anúncio com indicação de defeito.',
+    };
+  }
+
+  if (legalRisk >= 1) {
+    return {
+      score: Math.min(rawScore * 0.16, 0.18),
+      adjusted: true,
+      reason: 'Risco crítico: anúncio com menção a leilão/sinistro/risco legal.',
+    };
+  }
+
+  return { score: rawScore, adjusted: false };
+}
+
 function parseModel(raw: unknown): TrainedDealModel {
   const candidate = raw as TrainedDealModel;
 
@@ -85,6 +158,14 @@ function parseModel(raw: unknown): TrainedDealModel {
   }
 
   return candidate;
+}
+
+function computeRawScore(features: number[], model: TrainedDealModel): number {
+  const alignedFeatures = alignFeaturesToModel(features, model);
+  const normalizedFeatures = normalizeFeatures(alignedFeatures, model.normalization);
+  const linear = dot(model.weights, normalizedFeatures) + model.bias;
+  const score = sigmoid(linear);
+  return clamp(score, 0, 1);
 }
 
 /**
@@ -114,16 +195,9 @@ export function clearModelCache(): void {
  */
 export async function predictAdQuality(features: number[]): Promise<number> {
   const model = await loadModel();
-  if (features.length !== model.featureCount) {
-    throw new Error(
-      `Quantidade de features inválida: esperado ${model.featureCount}, recebido ${features.length}.`
-    );
-  }
-
-  const normalizedFeatures = normalizeFeatures(features, model.normalization);
-  const linear = dot(model.weights, normalizedFeatures) + model.bias;
-  const score = sigmoid(linear);
-  return clamp(score, 0, 1);
+  const rawScore = computeRawScore(features, model);
+  const adjusted = applyRiskAdjustment(rawScore, features);
+  return clamp(adjusted.score, 0, 1);
 }
 
 /**
@@ -131,16 +205,24 @@ export async function predictAdQuality(features: number[]): Promise<number> {
  */
 export async function predictAdQualityDetailed(features: number[]): Promise<PredictionResult> {
   const model = await loadModel();
-  const score = await predictAdQuality(features);
+  const rawScore = computeRawScore(features, model);
+  const adjusted = applyRiskAdjustment(rawScore, features);
+  const score = clamp(adjusted.score, 0, 1);
+
   const threshold = Number.isFinite(model.threshold) ? model.threshold : 0.5;
+  const hasRisk = hasCriticalRisk(features);
+  const isDeal = !hasRisk && score >= threshold;
   const distance = Math.abs(score - threshold);
   const confidence = clamp(distance / 0.5, 0, 1);
 
   return {
     score,
+    rawScore,
     threshold,
-    isDeal: score >= threshold,
+    isDeal,
     confidence,
     modelVersion: model.version,
+    riskAdjusted: adjusted.adjusted,
+    riskReason: adjusted.reason,
   };
 }

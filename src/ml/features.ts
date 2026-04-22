@@ -19,6 +19,12 @@ export interface PriceHistorySignal {
   lastDeltaRatio: number;
 }
 
+export interface RiskSignals {
+  defectRiskFlag: number;
+  severeDefectFlag: number;
+  auctionOrLegalRiskFlag: number;
+}
+
 export const FEATURE_NAMES = [
   'priceToMedian',
   'discountVsMedian',
@@ -32,7 +38,64 @@ export const FEATURE_NAMES = [
   'lastDeltaRatio',
   'isCar',
   'kilometersNormalized',
+  'defectRiskFlag',
+  'severeDefectFlag',
+  'auctionOrLegalRiskFlag',
 ] as const;
+
+export const FEATURE_INDEX: Record<(typeof FEATURE_NAMES)[number], number> = FEATURE_NAMES
+  .reduce((acc, featureName, index) => {
+    acc[featureName] = index;
+    return acc;
+  }, {} as Record<(typeof FEATURE_NAMES)[number], number>);
+
+const DEFECT_KEYWORDS = [
+  'defeito',
+  'com defeito',
+  'danificado',
+  'quebrado',
+  'ruim',
+  'estragado',
+  'com problema',
+  'com detalhe',
+  'nao da video',
+  'nao da imagem',
+  'sem video',
+  'sem imagem',
+  'nao funciona',
+  'nao liga',
+  'queimado',
+  'sucata',
+  'para pecas',
+  'pecas',
+  'sem funcionamento',
+];
+
+const SEVERE_DEFECT_KEYWORDS = [
+  'nao da video',
+  'nao da imagem',
+  'sem video',
+  'sem imagem',
+  'nao funciona',
+  'nao liga',
+  'queimado',
+  'sucata',
+  'sem funcionamento',
+  'para pecas',
+];
+
+const LEGAL_RISK_KEYWORDS = [
+  'leilao',
+  'passagem por leilao',
+  'recuperado',
+  'sinistro',
+  'media monta',
+  'grande monta',
+  'pequena monta',
+  'perda total',
+  'salvado',
+  'enchente',
+];
 
 function toFiniteNumber(value: unknown, fallback = 0): number {
   const parsed = Number(value);
@@ -46,6 +109,49 @@ function clamp(value: number, min: number, max: number): number {
 
 function sortNumeric(values: number[]): number[] {
   return [...values].sort((a, b) => a - b);
+}
+
+function normalizeForMatch(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function includesAny(text: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => text.includes(pattern));
+}
+
+export function detectRiskSignals(text: string, classificationLabel?: string): RiskSignals {
+  const normalizedText = normalizeForMatch(text || '');
+  const normalizedLabel = normalizeForMatch(classificationLabel || '');
+
+  const defectFromText = includesAny(normalizedText, DEFECT_KEYWORDS);
+  const severeFromText = includesAny(normalizedText, SEVERE_DEFECT_KEYWORDS);
+  const legalRiskFromText = includesAny(normalizedText, LEGAL_RISK_KEYWORDS);
+
+  const defectFromLabel = normalizedLabel === 'defeito';
+  const legalFromLabel = normalizedLabel === 'risco';
+
+  const defectRiskFlag = defectFromText || defectFromLabel ? 1 : 0;
+  const severeDefectFlag = severeFromText ? 1 : 0;
+  const auctionOrLegalRiskFlag = legalRiskFromText || legalFromLabel ? 1 : 0;
+
+  return {
+    defectRiskFlag,
+    severeDefectFlag,
+    auctionOrLegalRiskFlag,
+  };
+}
+
+export function hasCriticalRisk(features: number[]): boolean {
+  const defectRisk = features[FEATURE_INDEX.defectRiskFlag] ?? 0;
+  const severeDefect = features[FEATURE_INDEX.severeDefectFlag] ?? 0;
+  const legalRisk = features[FEATURE_INDEX.auctionOrLegalRiskFlag] ?? 0;
+  return defectRisk >= 1 || severeDefect >= 1 || legalRisk >= 1;
 }
 
 export function quantile(values: number[], percentile: number): number {
@@ -97,7 +203,7 @@ export function buildPriceContext(prices: number[]): PriceContext {
 }
 
 function normalizeLabel(label?: string): string {
-  return (label || '').toLowerCase().trim();
+  return normalizeForMatch(label || '');
 }
 
 export function conditionScore(label?: string): number {
@@ -105,7 +211,8 @@ export function conditionScore(label?: string): number {
   if (!normalized) return 0.5;
   if (normalized === 'novo') return 1;
   if (normalized === 'bom estado') return 0.8;
-  if (normalized === 'defeito') return 0.1;
+  if (normalized === 'risco') return 0.2;
+  if (normalized === 'defeito') return 0.05;
   return 0.5;
 }
 
@@ -176,6 +283,9 @@ export function extractFeaturesFromAd(ad: Document | any, context: FeatureContex
   const kilometers = toFiniteNumber((ad as any).kilometers);
   const kilometersNormalized = isCar ? clamp(kilometers / 250000, 0, 2) : 0;
 
+  const combinedText = `${(ad as any).title || ''} ${(ad as any).description || ''}`.trim();
+  const riskSignals = detectRiskSignals(combinedText, classification.label);
+
   return [
     priceToMedian,
     discountVsMedian,
@@ -189,6 +299,9 @@ export function extractFeaturesFromAd(ad: Document | any, context: FeatureContex
     signal.lastDeltaRatio,
     isCar,
     kilometersNormalized,
+    riskSignals.defectRiskFlag,
+    riskSignals.severeDefectFlag,
+    riskSignals.auctionOrLegalRiskFlag,
   ];
 }
 
@@ -197,27 +310,38 @@ export function extractFeaturesFromAd(ad: Document | any, context: FeatureContex
  * Quanto maior o score, maior a chance de o anúncio ser um "bom negócio".
  */
 export function computeDealHeuristic(features: number[]): number {
-  const discountVsMedian = features[1] ?? 0;
-  const ageNormalized = features[3] ?? 0;
-  const condition = features[4] ?? 0;
-  const sentiment = features[5] ?? 0;
-  const superPriceFlag = features[6] ?? 0;
-  const hasDrop = features[7] ?? 0;
-  const dropRatio = features[8] ?? 0;
-  const isCar = features[10] ?? 0;
-  const kilometersNormalized = features[11] ?? 0;
+  const discountVsMedian = features[FEATURE_INDEX.discountVsMedian] ?? 0;
+  const ageNormalized = features[FEATURE_INDEX.ageNormalized] ?? 0;
+  const condition = features[FEATURE_INDEX.conditionScore] ?? 0;
+  const sentiment = features[FEATURE_INDEX.sentimentScoreNormalized] ?? 0;
+  const superPriceFlag = features[FEATURE_INDEX.superPriceFlag] ?? 0;
+  const hasDrop = features[FEATURE_INDEX.hasRecentPriceDrop] ?? 0;
+  const dropRatio = features[FEATURE_INDEX.dropRatio] ?? 0;
+  const isCar = features[FEATURE_INDEX.isCar] ?? 0;
+  const kilometersNormalized = features[FEATURE_INDEX.kilometersNormalized] ?? 0;
+  const defectRiskFlag = features[FEATURE_INDEX.defectRiskFlag] ?? 0;
+  const severeDefectFlag = features[FEATURE_INDEX.severeDefectFlag] ?? 0;
+  const auctionOrLegalRiskFlag = features[FEATURE_INDEX.auctionOrLegalRiskFlag] ?? 0;
 
   const recencyBonus = 1 - clamp(ageNormalized, 0, 1);
   const mileageBonus = isCar ? 1 - clamp(kilometersNormalized, 0, 1) : 0.3;
 
-  return (
-    0.5 * discountVsMedian +
-    0.18 * condition +
-    0.1 * sentiment +
-    0.08 * recencyBonus +
+  const baseScore = (
+    0.42 * discountVsMedian +
+    0.16 * condition +
+    0.08 * sentiment +
+    0.07 * recencyBonus +
     0.06 * dropRatio +
-    0.04 * hasDrop +
-    0.04 * superPriceFlag +
-    0.04 * mileageBonus
+    0.05 * hasDrop +
+    0.05 * superPriceFlag +
+    0.03 * mileageBonus
   );
+
+  const riskPenalty = (
+    0.85 * defectRiskFlag +
+    1.15 * severeDefectFlag +
+    0.95 * auctionOrLegalRiskFlag
+  );
+
+  return baseScore - riskPenalty;
 }
