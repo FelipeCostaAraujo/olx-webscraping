@@ -7,10 +7,27 @@ import NotificationService from './services/notification-service';
 import { generateDataset } from './ml/generateDataset';
 import { trainModel } from './ml/trainModel';
 import { createLogger } from './utils/logger';
+import Ad from './models/Ad';
 
 const scraper = new Scraper(new NotificationService());
 const logApp = createLogger('App');
 const logCron = createLogger('Cron');
+
+const AD_RETENTION_DAYS = Number(process.env.AD_RETENTION_DAYS ?? 30);
+
+async function blacklistOldAds() {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - AD_RETENTION_DAYS);
+  const result = await Ad.updateMany(
+    { createdAt: { $lt: cutoff }, blacklisted: { $ne: true } },
+    { $set: { blacklisted: true } }
+  );
+  logCron.info('Blacklist de anúncios antigos concluído', {
+    atualizados: result.modifiedCount,
+    retencaoDias: AD_RETENTION_DAYS,
+    corte: cutoff.toISOString(),
+  });
+}
 
 async function main() {
   try {
@@ -51,16 +68,23 @@ async function main() {
 
     await scraper.checkAllSearches();
     await scraper.checkCarSearches();
+    await blacklistOldAds();
 
-    // Agenda as buscas para rodar a cada 2 horas
-    cron.schedule('0 */2 * * *', async () => {
+    // Coleta a cada 1 hora
+    cron.schedule('0 * * * *', async () => {
       logCron.info('Iniciando busca agendada...');
       await scraper.checkAllSearches();
     });
 
-    cron.schedule('0 */2 * * *', async () => {
-      logCron.info('Iniciando buscas de carros agendadas...');
-      await scraper.checkCarSearches();
+    // cron.schedule('0 * * * *', async () => {
+    //   logCron.info('Iniciando buscas de carros agendadas...');
+    //   await scraper.checkCarSearches();
+    // });
+
+    // Blacklist de anúncios antigos — todo dia às 03:00
+    cron.schedule('0 3 * * *', async () => {
+      logCron.info('Iniciando blacklist de anúncios antigos...');
+      await blacklistOldAds();
     });
   } catch (error) {
     logApp.error('Erro na inicialização', { erro: error });
