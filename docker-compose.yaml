@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: docker.io/bitnami/mongodb:latest
+    image: docker.io/soldevelo/mongodb:latest
     restart: always
     container_name: olx-webscraping-db
     ports:
